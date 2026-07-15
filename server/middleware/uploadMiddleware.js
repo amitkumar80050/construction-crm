@@ -55,10 +55,83 @@ const upload = multer({
   fileFilter: fileFilter,
 });
 
+
+// Deletes the uploaded file after the response is sent (success or error)
+const cleanupTempFile = (req, res, next) => {
+  res.on('finish', () => {
+    if (req.file?.path) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Failed to delete temp upload file:', err.message);
+      });
+    }
+  });
+  next();
+};
+
 // Single file upload
 const uploadSingle = (fieldName) => upload.single(fieldName);
 
 // Multiple file upload
 const uploadMultiple = (fieldName, maxCount) => upload.array(fieldName, maxCount);
 
-module.exports = { uploadSingle, uploadMultiple, upload };
+module.exports = { uploadSingle, uploadMultiple, upload, cleanupTempFile };
+
+
+
+// const multer = require('multer');
+// const path = require('path');
+// const fs = require('fs');
+
+// const UPLOAD_DIR = path.join(__dirname, '..', 'temp-uploads');
+// if (!fs.existsSync(UPLOAD_DIR)) {
+//   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// }
+
+// const ALLOWED_MIME_TYPES = [
+//   'text/csv',
+//   'application/vnd.ms-excel',
+//   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+// ];
+// const ALLOWED_EXTENSIONS = ['.csv', '.xls', '.xlsx'];
+// const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+//   filename: (req, file, cb) => {
+//     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+//     const ext = path.extname(file.originalname).toLowerCase();
+//     cb(null, `import-${uniqueSuffix}${ext}`);
+//   },
+// });
+
+// const fileFilter = (req, file, cb) => {
+//   const ext = path.extname(file.originalname).toLowerCase();
+
+//   if (!ALLOWED_EXTENSIONS.includes(ext)) {
+//     return cb(new Error('Invalid file extension. Only .csv, .xls, .xlsx are allowed.'));
+//   }
+//   if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+//     return cb(new Error('Invalid file MIME type.'));
+//   }
+//   cb(null, true);
+// };
+
+// const upload = multer({
+//   storage,
+//   fileFilter,
+//   limits: { fileSize: MAX_FILE_SIZE },
+// });
+
+// // Deletes the temp file after the response is sent (success or error)
+// const cleanupTempFile = (req, res, next) => {
+//   res.on('finish', () => {
+//     if (req.file?.path) {
+//       fs.unlink(req.file.path, (err) => {
+//         if (err) console.error('Failed to delete temp upload file:', err.message);
+//       });
+//     }
+//   });
+//   next();
+// };
+
+// module.exports = { upload, cleanupTempFile, UPLOAD_DIR };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { FaHome, FaUsers, FaComment, FaBell, FaPhone, FaUser, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaUsers, FaComment, FaBell, FaPhone, FaUser, FaCog, FaSignOutAlt, FaFileExport } from 'react-icons/fa';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 
@@ -15,6 +15,7 @@ const UserLayout = () => {
     { path: '/remarks', icon: FaComment, label: 'Remarks' },
     { path: '/reminders', icon: FaBell, label: 'Reminders' },
     // { path: '/calling', icon: FaPhone, label: 'Calling' },
+    { path: '/export', icon: FaFileExport, label: 'Export Data' },  
   ];
 
   return (

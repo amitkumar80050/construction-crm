@@ -64,6 +64,30 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+
+
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+  },
+  permissions: {
+    type: [String],
+    enum: [
+      'manage_leads',
+      'manage_remarks',
+      'manage_stages',
+      'manage_reminders',
+      'manage_users',
+      'view_analytics',
+      'import_data',
+      'export_data',
+    ],
+    default: [],
+  },
+  
 });
 
 // Encrypt password using bcrypt

@@ -1,6 +1,10 @@
 import api from './api';
 
 const remarkService = {
+  getAllRemarks: async (params) => {
+    return await api.get('/remarks', { params });
+  },
+
   getRemarksByClient: async (clientId) => {
     return await api.get(`/remarks/client/${clientId}`);
   },

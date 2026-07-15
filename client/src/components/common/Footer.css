@@ -1,0 +1,133 @@
+.footer-fade-in {
+  animation: footerFadeIn 0.5s ease both;
+}
+
+@keyframes footerFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.footer-link {
+  position: relative;
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0;
+  height: 1px;
+  background: #2563eb;
+  transition: width 0.25s ease;
+}
+
+.footer-link:hover {
+  color: #2563eb;
+}
+
+.footer-link:hover::after {
+  width: 100%;
+}
+
+.footer-social-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  background: #f1f5f9;
+  transition: all 0.25s ease;
+}
+
+.footer-social-icon:hover {
+  transform: translateY(-3px);
+  background: #2563eb;
+  color: white;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3);
+}
+
+.footer-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-ripple:active::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(37, 99, 235, 0.35);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: rippleEffect 0.5s ease-out;
+}
+
+@keyframes rippleEffect {
+  to {
+    width: 220px;
+    height: 220px;
+    opacity: 0;
+  }
+}
+
+.footer-scroll-top {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  cursor: pointer;
+  z-index: 1040;
+  transition: all 0.25s ease;
+}
+
+.footer-scroll-top:hover {
+  background: #1d4ed8;
+  transform: translateY(-3px);
+}
+
+.footer-feedback-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 10px 16px;
+  border-radius: 24px;
+  background: #22c55e;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  cursor: pointer;
+  z-index: 1040;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.footer-feedback-btn:hover {
+  background: #16a34a;
+  transform: translateY(-3px);
+}
+
+@media (max-width: 576px) {
+  .footer-scroll-top { bottom: 150px; right: 16px; }
+  .footer-feedback-btn { bottom: 16px; right: 16px; padding: 10px 14px; }
+}

@@ -1,7 +1,7 @@
 {
   "name": "construction-crm",
   "version": "1.0.0",
-  "description": "Construction CRM Application",
+  "description": "Construction CRM Application by amit kumar",
   "main": "index.js",
   "scripts": {
     "start": "node server/server.js",
@@ -16,6 +16,9 @@
     "nodemon": "^3.0.1"
   },
   "dependencies": {
-    "pdf-parse": "^2.4.5"
+    "exceljs": "^4.4.0",
+    "json2csv": "^6.0.0-alpha.2",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.19.1"
   }
 }

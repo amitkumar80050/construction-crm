@@ -30,6 +30,14 @@ const authService = {
     const response = await api.put(`/auth/reset-password/${token}`, { password });
     return response.data;
   },
+
+  updateProfile: async (data) => {
+  return await api.put('/auth/update-profile', data);
+},
+
+changePassword: async (data) => {
+  return await api.put('/auth/change-password', data);
+},
 };
 
 export default authService;

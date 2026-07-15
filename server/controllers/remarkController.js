@@ -25,6 +25,55 @@ const getRemarksByClient = async (req, res) => {
   }
 };
 
+
+// @desc    Get all remarks (optionally filtered)
+// @route   GET /api/remarks
+// @access  Private
+const getAllRemarks = async (req, res) => {
+  try {
+    let query = {};
+
+    if (req.query.client) {
+      query.client = req.query.client;
+    }
+    if (req.query.type) {
+      query.type = req.query.type;
+    }
+    if (req.query.visibility) {
+      query.visibility = req.query.visibility;
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const startIndex = (page - 1) * limit;
+
+    const total = await Remark.countDocuments(query);
+
+    const remarks = await Remark.find(query)
+      .populate('user', 'name email')
+      .populate('client', 'name company')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip(startIndex);
+
+    res.status(200).json({
+      success: true,
+      count: remarks.length,
+      total,
+      pages: Math.ceil(total / limit),
+      currentPage: page,
+      data: remarks,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+    });
+  }
+};
+
+
 // @desc    Get single remark
 // @route   GET /api/remarks/:id
 // @access  Private
@@ -178,6 +227,7 @@ const deleteRemark = async (req, res) => {
 
 module.exports = {
   getRemarksByClient,
+  getAllRemarks,
   getRemark,
   createRemark,
   updateRemark,

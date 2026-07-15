@@ -308,6 +308,92 @@ const resetPassword = async (req, res) => {
   }
 };
 
+
+// @desc    Update current user profile
+// @route   PUT /api/auth/update-profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  try {
+    const { name, phone, department } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (department) user.department = department;
+
+    await user.save();
+
+    await Activity.create({
+      user: user._id,
+      type: 'update',
+      module: 'auth',
+      description: `User ${user.email} updated their profile`,
+    });
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        department: user.department,
+        profilePicture: user.profilePicture,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Change current user password
+// @route   PUT /api/auth/change-password
+// @access  Private
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide current and new password' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -315,4 +401,6 @@ module.exports = {
   getMe,
   forgotPassword,
   resetPassword,
+  updateProfile,
+  changePassword,
 };
