@@ -150,3 +150,40 @@ code {
     display: none !important;
   }
 }
+
+/* --- Dark mode overrides --- */
+body.dark-mode {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+body.dark-mode .bg-light {
+  background-color: #1e293b !important;
+}
+
+body.dark-mode .navbar,
+body.dark-mode .bg-white {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .navbar-brand,
+body.dark-mode .fw-semibold,
+body.dark-mode .text-muted {
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .btn-outline-secondary {
+  color: #cbd5e1;
+  border-color: #475569;
+}
+
+body.dark-mode .btn-outline-secondary:hover {
+  background-color: #334155;
+  color: white;
+}
+
+body.dark-mode footer,
+body.dark-mode .border {
+  border-color: #334155 !important;
+}
