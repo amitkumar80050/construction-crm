@@ -107,7 +107,7 @@ const Footer = () => {
             <div className="col-6 col-md-3">
               <div className="d-flex align-items-center gap-2 mb-2">
                 <span style={{ fontSize: "22px" }}>{"\uD83C\uDFD7\uFE0F"}</span>
-                <strong style={{ color: "#1e293b" }}>BuildTrack Pro</strong>
+                <strong style={{ color: "#1e293b" }}>BuildTrack Pro <br />Amit kumar</strong>
               </div>
               <p className="text-muted mb-1" style={{ fontSize: "12px" }}>Version {APP_VERSION}</p>
               <p className="text-muted mb-0" style={{ fontSize: "12px" }}>
@@ -146,12 +146,12 @@ const Footer = () => {
               <ul className="list-unstyled mb-0 d-grid gap-2" style={{ fontSize: "13px" }}>
                 <li>
                   <a href="mailto:support@buildtrackpro.com" className="footer-link d-flex align-items-center gap-2">
-                    <FaEnvelope size={11} /> support@buildtrackpro.com
+                    <FaEnvelope size={11} /> amityadav50800@gmail.com
                   </a>
                 </li>
                 <li>
                   <a href="tel:+911234567890" className="footer-link d-flex align-items-center gap-2">
-                    <FaPhone size={11} /> +91 123 456 7890
+                    <FaPhone size={11} /> +91 9169137366
                   </a>
                 </li>
                 <li>
@@ -160,7 +160,7 @@ const Footer = () => {
                   </a>
                 </li>
                 <li className="d-flex align-items-start gap-2 text-muted">
-                  <FaMapMarkerAlt size={11} style={{ marginTop: "2px" }} /> Varanasi, Uttar Pradesh, India
+                  <FaMapMarkerAlt size={11} style={{ marginTop: "2px" }} /> Lucknow, Uttar Pradesh, India
                 </li>
               </ul>
             </div>
