@@ -20,11 +20,13 @@ const userSchema = new mongoose.Schema({
     // Accept common valid email formats including plus addressing
     match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please add a valid email'],
   },
-  password: {
+    password: {
     type: String,
-    required: [true, 'Please add a password'],
     minlength: 6,
     select: false,
+    required: function () {
+      return !this.googleId && !this.githubId && !this.linkedinId;
+    },
   },
   role: {
     type: String,
@@ -38,6 +40,14 @@ const userSchema = new mongoose.Schema({
   profilePicture: {
     type: String,
     default: 'default-profile.jpg',
+  },
+  googleId: { type: String, unique: true, sparse: true },
+  githubId: { type: String, unique: true, sparse: true },
+  linkedinId: { type: String, unique: true, sparse: true },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google', 'github', 'linkedin'],
+    default: 'local',
   },
   department: {
     type: String,
@@ -92,7 +102,7 @@ const userSchema = new mongoose.Schema({
 
 // Encrypt password using bcrypt
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return next();
   }
   const salt = await bcrypt.genSalt(10);

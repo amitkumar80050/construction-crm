@@ -1,182 +1,231 @@
+const fs = require('fs');
+const path = require('path');
+const { parse } = require('csv-parse/sync');
+const XLSX = require('xlsx');
 const Client = require('../models/Client');
 const Stage = require('../models/Stage');
-const User = require('../models/User');
-const ImportLog = require('../models/ImportLog');
-const { validateLeadRow } = require('../validations/importValidator');
-const { chunkArray } = require('../utils/importHelpers');
 
-const BATCH_SIZE = 500;
+const CRM_FIELDS = [
+  { key: 'Name', label: 'Lead Name', required: true },
+  { key: 'Company', label: 'Company', required: true },
+  { key: 'Email', label: 'Email', required: true },
+  { key: 'Phone', label: 'Phone', required: true },
+  { key: 'Status', label: 'Status', required: false },
+  { key: 'Stage', label: 'Stage', required: false },
+  { key: 'ProjectValue', label: 'Project Value', required: false },
+  { key: 'Notes', label: 'Notes', required: false },
+];
 
-/**
- * Validates all mapped rows and classifies them.
- * Returns { validRows, invalidRows, errorReport, duplicates }
- */
-async function analyzeLeadRows(mappedRows) {
-  const stages = await Stage.find({ isActive: true }).select('name');
-  const users = await User.find({ isActive: true }).select('name email');
+const VALID_STATUSES = ['lead', 'active', 'closed', 'lost'];
+const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 
-  const validRows = [];
-  const errorReport = [];
+// --- File parsing -----------------------------------------------------
 
-  mappedRows.forEach((row, idx) => {
-    const rowNumber = idx + 2; // +2 accounts for header row + 1-indexing
-    const { valid, errors } = validateLeadRow(row, rowNumber, stages, users);
-    if (valid) {
-      validRows.push({ ...row, __row: rowNumber });
-    } else {
-      errorReport.push(...errors);
-    }
-  });
-
-  // Duplicate detection within the file itself (email, phone, or name+phone)
-  const seen = new Map();
-  const dedupedRows = [];
-  const duplicatesWithinFile = [];
-
-  for (const row of validRows) {
-    const key = (row.email || '').toLowerCase() || `${(row.name || '').toLowerCase()}|${row.phone}`;
-    if (seen.has(key)) {
-      duplicatesWithinFile.push(row);
-    } else {
-      seen.set(key, true);
-      dedupedRows.push(row);
-    }
-  }
-
-  // Duplicate detection against existing database records
-  const emails = dedupedRows.map((r) => r.email).filter(Boolean);
-  const phones = dedupedRows.map((r) => r.phone).filter(Boolean);
-
-  const existingClients = await Client.find({
-    $or: [
-      { email: { $in: emails } },
-      { phone: { $in: phones } },
-    ],
-  }).select('email phone name');
-
-  const existingEmailSet = new Set(existingClients.map((c) => c.email?.toLowerCase()).filter(Boolean));
-  const existingPhoneSet = new Set(existingClients.map((c) => c.phone).filter(Boolean));
-
-  const newRows = [];
-  const duplicateRows = [];
-
-  for (const row of dedupedRows) {
-    const isDuplicate =
-      (row.email && existingEmailSet.has(row.email.toLowerCase())) ||
-      (row.phone && existingPhoneSet.has(row.phone));
-
-    if (isDuplicate) {
-      duplicateRows.push(row);
-    } else {
-      newRows.push(row);
-    }
-  }
-
-  return {
-    totalRows: mappedRows.length,
-    validRows: newRows,
-    duplicateRows: [...duplicateRows, ...duplicatesWithinFile],
-    invalidCount: errorReport.length > 0 ? new Set(errorReport.map((e) => e.row)).size : 0,
-    errorReport,
-    existingClients,
-  };
+function readCSV(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const records = parse(raw, { columns: true, skip_empty_lines: true, trim: true });
+  const detectedColumns = records.length > 0 ? Object.keys(records[0]) : [];
+  return { rows: records, detectedColumns, sheetNames: null, activeSheet: null };
 }
 
-/**
- * Performs the actual bulk insert/update using MongoDB bulkWrite,
- * processed in batches for large files.
- */
-async function bulkImportLeads({ newRows, duplicateRows, duplicateStrategy, assignedUserId, stagesByName }) {
+function readExcel(filePath, sheetName) {
+  const workbook = XLSX.readFile(filePath);
+  const sheetNames = workbook.SheetNames;
+  const activeSheet = sheetName || sheetNames[0];
+  const sheet = workbook.Sheets[activeSheet];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  const detectedColumns = rows.length > 0 ? Object.keys(rows[0]) : [];
+  return { rows, detectedColumns, sheetNames, activeSheet };
+}
+
+function readFile(filePath, fileType, sheetName) {
+  return fileType === 'excel' ? readExcel(filePath, sheetName) : readCSV(filePath);
+}
+
+// --- Mapping & validation ----------------------------------------------
+
+function applyMapping(rawRow, columnMapping) {
+  const mapped = {};
+  for (const [uploadedColumn, crmField] of Object.entries(columnMapping)) {
+    if (!crmField) continue; // ignored column
+    mapped[crmField] = rawRow[uploadedColumn] != null ? String(rawRow[uploadedColumn]).trim() : '';
+  }
+  return mapped;
+}
+
+async function validateRow(mapped, rowNumber, stageNameToId, seenInBatch) {
+  const errors = [];
+
+  if (!mapped.Name) errors.push({ row: rowNumber, column: 'Name', value: '', reason: 'Name is required', suggestedFix: 'Provide a lead name' });
+  if (!mapped.Company) errors.push({ row: rowNumber, column: 'Company', value: '', reason: 'Company is required', suggestedFix: 'Provide a company name' });
+  if (!mapped.Phone) errors.push({ row: rowNumber, column: 'Phone', value: '', reason: 'Phone is required', suggestedFix: 'Provide a phone number' });
+
+  if (mapped.Email) {
+    if (!EMAIL_REGEX.test(mapped.Email)) {
+      errors.push({ row: rowNumber, column: 'Email', value: mapped.Email, reason: 'Invalid email format', suggestedFix: 'Use a valid email address (e.g. name@example.com)' });
+    }
+  } else {
+    errors.push({ row: rowNumber, column: 'Email', value: '', reason: 'Email is required', suggestedFix: 'Provide an email address' });
+  }
+
+  if (mapped.Status && !VALID_STATUSES.includes(mapped.Status.toLowerCase())) {
+    errors.push({ row: rowNumber, column: 'Status', value: mapped.Status, reason: `Invalid status "${mapped.Status}"`, suggestedFix: `Use one of: ${VALID_STATUSES.join(', ')}` });
+  }
+
+  if (mapped.ProjectValue && isNaN(Number(mapped.ProjectValue))) {
+    errors.push({ row: rowNumber, column: 'ProjectValue', value: mapped.ProjectValue, reason: 'Not a valid number', suggestedFix: 'Use numbers only, e.g. 50000' });
+  }
+
+  if (mapped.Stage && !stageNameToId.has(mapped.Stage.toLowerCase())) {
+    errors.push({ row: rowNumber, column: 'Stage', value: mapped.Stage, reason: `Unknown stage "${mapped.Stage}"`, suggestedFix: 'Match an existing stage name, or leave blank' });
+  }
+
+  // Duplicate detection: existing DB record (by email or phone) OR duplicate within this same file
+  let status = 'valid';
+  if (errors.length > 0) {
+    status = 'invalid';
+  } else {
+    const batchKey = `${mapped.Email.toLowerCase()}|${mapped.Phone}`;
+    if (seenInBatch.has(batchKey)) {
+      status = 'duplicate';
+    } else {
+      const existing = await Client.findOne({
+        $or: [{ email: mapped.Email.toLowerCase() }, { phone: mapped.Phone }],
+      }).select('_id');
+      if (existing) status = 'duplicate';
+    }
+    seenInBatch.add(batchKey);
+  }
+
+  return { status, errors };
+}
+
+// --- Preview -------------------------------------------------------------
+
+async function buildPreview({ tempFilePath, fileType, sheetName, columnMapping }) {
+  const { rows: rawRows } = readFile(tempFilePath, fileType, sheetName);
+
+  const stages = await Stage.find({ isActive: true }).select('name');
+  const stageNameToId = new Map(stages.map((s) => [s.name.toLowerCase(), s._id]));
+
+  const seenInBatch = new Set();
+  const rows = [];
+  const errorReport = [];
+
+  let rowNumber = 1;
+  for (const rawRow of rawRows) {
+    rowNumber += 1; // account for header row = row 1
+    const mapped = applyMapping(rawRow, columnMapping);
+
+    // Skip fully empty rows
+    const hasAnyValue = Object.values(mapped).some((v) => v && v.trim());
+    if (!hasAnyValue) continue;
+
+    const { status, errors } = await validateRow(mapped, rowNumber, stageNameToId, seenInBatch);
+    rows.push({ rowNumber, data: mapped, status, errors: errors.length ? errors : undefined });
+    errorReport.push(...errors);
+  }
+
+  const totalRecords = rows.length;
+  const validRecords = rows.filter((r) => r.status === 'valid').length;
+  const duplicateRecords = rows.filter((r) => r.status === 'duplicate').length;
+  const invalidRecords = rows.filter((r) => r.status === 'invalid').length;
+
+  return { totalRecords, validRecords, invalidRecords, duplicateRecords, rows, errorReport };
+}
+
+// --- Import (bulk insert) -------------------------------------------------
+
+async function processImport({ tempFilePath, fileType, sheetName, columnMapping, duplicateStrategy, userId }) {
+  const startTime = Date.now();
+  const preview = await buildPreview({ tempFilePath, fileType, sheetName, columnMapping });
+
+  const stages = await Stage.find({ isActive: true }).select('name');
+  const stageNameToId = new Map(stages.map((s) => [s.name.toLowerCase(), s._id]));
+
   let imported = 0;
   let updated = 0;
   let skipped = 0;
   let failed = 0;
 
-  const buildDoc = async (row) => {
-    const clientId = await Client.generateClientId();
-    const stageId = row.stage ? stagesByName.get(String(row.stage).trim().toLowerCase()) : undefined;
+  const toInsert = [];
+  const toUpdate = []; // { filter, update }
 
-    return {
-      clientId,
-      name: row.name,
-      company: row.company,
-      email: row.email ? row.email.toLowerCase() : undefined,
-      phone: row.phone,
-      status: row.status || 'lead',
-      projectValue: row.projectValue ? Number(row.projectValue) : undefined,
-      notes: row.notes,
-      assignedTo: assignedUserId,
-      currentStage: stageId,
-      source: 'other',
+  for (const row of preview.rows) {
+    if (row.status === 'invalid') {
+      failed += 1;
+      continue;
+    }
+
+    const doc = {
+      name: row.data.Name,
+      company: row.data.Company,
+      email: row.data.Email.toLowerCase(),
+      phone: row.data.Phone,
+      status: (row.data.Status || 'lead').toLowerCase(),
+      projectValue: row.data.ProjectValue ? Number(row.data.ProjectValue) : 0,
+      notes: row.data.Notes || '',
+      assignedTo: userId,
     };
+    if (row.data.Stage && stageNameToId.has(row.data.Stage.toLowerCase())) {
+      doc.currentStage = stageNameToId.get(row.data.Stage.toLowerCase());
+    }
+
+    if (row.status === 'duplicate') {
+      if (duplicateStrategy === 'skip') {
+        skipped += 1;
+        continue;
+      }
+      if (duplicateStrategy === 'only_new') {
+        skipped += 1;
+        continue;
+      }
+      // 'update' or 'replace' — apply the same field update either way
+      // (a full "replace" isn't safe for a CRM record with relations, so
+      // we update matched fields rather than deleting+recreating).
+      toUpdate.push({
+        filter: { $or: [{ email: doc.email }, { phone: doc.phone }] },
+        update: doc,
+      });
+      continue;
+    }
+
+    // valid, new record
+    doc.clientId = await Client.generateClientId();
+    toInsert.push(doc);
+  }
+
+  if (toInsert.length > 0) {
+    const result = await Client.insertMany(toInsert, { ordered: false });
+    imported += result.length;
+  }
+
+  for (const { filter, update } of toUpdate) {
+    const result = await Client.updateOne(filter, { $set: update });
+    if (result.matchedCount > 0) updated += 1;
+    else skipped += 1;
+  }
+
+  // Clean up the temp file now that we're done with it
+  try { fs.unlinkSync(tempFilePath); } catch (e) { /* non-fatal */ }
+
+  const importDuration = Date.now() - startTime;
+
+  return {
+    totalUploaded: preview.totalRecords,
+    imported,
+    updated,
+    skipped,
+    duplicate: preview.duplicateRecords,
+    failed,
+    importDuration,
+    errorReport: preview.errorReport,
   };
-
-  // Insert genuinely new rows in batches
-  const newBatches = chunkArray(newRows, BATCH_SIZE);
-  for (const batch of newBatches) {
-    const docs = [];
-    for (const row of batch) {
-      try {
-        docs.push(await buildDoc(row));
-      } catch (err) {
-        failed++;
-      }
-    }
-
-    if (docs.length > 0) {
-      try {
-        const result = await Client.insertMany(docs, { ordered: false });
-        imported += result.length;
-      } catch (err) {
-        // insertMany with ordered:false still inserts valid docs and reports failures
-        const insertedCount = err.insertedDocs?.length || 0;
-        imported += insertedCount;
-        failed += (docs.length - insertedCount);
-      }
-    }
-  }
-
-  // Handle duplicates per the chosen strategy
-  if (duplicateStrategy === 'skip' || duplicateStrategy === 'only_new') {
-    skipped += duplicateRows.length;
-  } else if (duplicateStrategy === 'update' || duplicateStrategy === 'replace') {
-    const dupBatches = chunkArray(duplicateRows, BATCH_SIZE);
-    for (const batch of dupBatches) {
-      const bulkOps = [];
-      for (const row of batch) {
-        const filter = row.email ? { email: row.email.toLowerCase() } : { phone: row.phone };
-        const stageId = row.stage ? stagesByName.get(String(row.stage).trim().toLowerCase()) : undefined;
-
-        const updateDoc = {
-          name: row.name,
-          company: row.company,
-          phone: row.phone,
-          ...(row.projectValue ? { projectValue: Number(row.projectValue) } : {}),
-          ...(row.notes ? { notes: row.notes } : {}),
-          ...(stageId ? { currentStage: stageId } : {}),
-          updatedAt: new Date(),
-        };
-
-        bulkOps.push({
-          updateOne: {
-            filter,
-            update: { $set: updateDoc },
-          },
-        });
-      }
-
-      if (bulkOps.length > 0) {
-        try {
-          const result = await Client.bulkWrite(bulkOps, { ordered: false });
-          updated += result.modifiedCount || 0;
-        } catch (err) {
-          failed += batch.length;
-        }
-      }
-    }
-  }
-
-  return { imported, updated, skipped, failed };
 }
 
-module.exports = { analyzeLeadRows, bulkImportLeads, BATCH_SIZE };
+module.exports = {
+  CRM_FIELDS,
+  readFile,
+  buildPreview,
+  processImport,
+};

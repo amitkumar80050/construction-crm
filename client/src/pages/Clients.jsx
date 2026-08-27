@@ -6,6 +6,7 @@ import clientService from '../services/clientService';
 import LatestRemark from '../components/remarks/LatestRemark';
 import CurrentStage from '../components/stages/CurrentStage';
 import UpcomingReminder from '../components/reminders/UpcomingReminder';
+import QuickLeadUpload from '../components/clients/QuickLeadUpload';
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -73,6 +74,7 @@ const Clients = () => {
 
   return (
     <div style={{ padding: '24px' }}>
+      
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -81,29 +83,44 @@ const Clients = () => {
         flexWrap: 'wrap',
         gap: '16px'
       }}>
-        <div>
-          <h1 style={{ fontSize: '28px', color: '#1e293b' }}>Leads</h1>
-          <p style={{ color: '#64748b' }}>Manage your leads relationships</p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <QuickLeadUpload onImported={fetchClients} />
+          <Link
+            to="/import"
+            style={{
+              padding: '10px 16px',
+              background: '#f1f5f9',
+              color: '#475569',
+              border: 'none',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            Advanced Import
+          </Link>
+          <Link
+            to="/clients/new"
+            style={{
+              padding: '10px 20px',
+              background: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#1d4ed8')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#2563eb')}
+          >
+            <FaPlus /> Add Leads
+          </Link>
         </div>
-        <Link
-          to="/clients/new"
-          style={{
-            padding: '10px 20px',
-            background: '#2563eb',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'background 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#1d4ed8'}
-          onMouseLeave={(e) => e.currentTarget.style.background = '#2563eb'}
-        >
-          <FaPlus /> Add Leads
-        </Link>
       </div>
 
       <div style={{

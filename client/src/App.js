@@ -35,6 +35,8 @@ import AdminRoute from './routes/AdminRoute';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
+import ImportData from './pages/ImportData';
+import EditClient from './pages/EditClient';
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
@@ -54,6 +56,7 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/clients" element={<Clients />} />
             <Route path="/clients/:id" element={<ClientProfile />} />
+            <Route path="/clients/:id/edit" element={<EditClient />} />
             <Route path="/clients/new" element={<AddClient />} />
             <Route path="/remarks" element={<Remarks />} />
             <Route path="/stages" element={<Stages />} />
@@ -66,6 +69,7 @@ function AppContent() {
             {/* Admin only routes */}
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<Users />} />
+              <Route path="/import" element={<ImportData />} />
             </Route>
           </Route>
         </Route>

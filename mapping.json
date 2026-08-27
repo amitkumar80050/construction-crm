@@ -1,0 +1,9 @@
+{
+  "Customer Name": "name",
+  "Email Address": "email",
+  "Mobile Number": "phone",
+  "Company Name": "company",
+  "Project Budget": "projectValue",
+  "Latest Note": "remark",
+  "Assigned Employee": "assignedTo"
+}

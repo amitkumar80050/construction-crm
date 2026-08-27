@@ -103,8 +103,8 @@ const ClientForm = ({ initialData, onSubmit, onCancel, saving, submitLabel = 'Sa
         </div>
 
         <div>
-          <label style={labelStyle}>Project Value ($)</label>
-          <input type="number" name="projectValue" value={formData.projectValue} onChange={handleChange} style={inputStyle} />
+          <label style={labelStyle}>Project Value (Rs.)</label>
+          <input type="number" name="projectValue"  style={inputStyle} />
         </div>
 
         <div style={{ gridColumn: '1 / -1' }}>

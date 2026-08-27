@@ -17,12 +17,21 @@ const importService = {
     });
   },
 
-  selectSheet: async (data) => api.post('/import/select-sheet', data),
-  preview: async (data) => api.post('/import/preview', data),
-  process: async (data) => api.post('/import/process', data),
-  getHistory: async () => api.get('/import/history'),
-  getErrorReportUrl: (id) => `${api.defaults.baseURL}/import/error-report/${id}`,
-  getTemplateUrl: (moduleName) => `${api.defaults.baseURL}/import/template/${moduleName}`,
+  getCrmFields: async () => {
+    return await api.get('/import/fields');
+  },
+
+  selectSheet: async (data) => {
+    return await api.post('/import/select-sheet', data);
+  },
+
+  preview: async (data) => {
+    return await api.post('/import/preview', data);
+  },
+
+  process: async (data) => {
+    return await api.post('/import/process', data);
+  },
 };
 
 export default importService;

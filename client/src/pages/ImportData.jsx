@@ -56,7 +56,7 @@ const ImportData = () => {
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ margin: 0, color: '#1e293b', fontSize: '24px' }}>Import Data</h1>
-        
+        <a
           href={importService.getTemplateUrl('leads')}
           style={{
             padding: '10px 16px',
@@ -121,7 +121,7 @@ const ImportData = () => {
                       </td>
                       <td style={{ padding: '10px', textAlign: 'center' }}>
                         {log.failedRecords > 0 && (
-                          
+                          <a
                             href={importService.getErrorReportUrl(log._id)}
                             target="_blank"
                             rel="noopener noreferrer"

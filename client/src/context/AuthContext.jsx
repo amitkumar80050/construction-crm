@@ -71,6 +71,23 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
+  const handleOAuthToken = async (token) => {
+    try {
+      localStorage.setItem('token', token);
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      toast.success('Login successful!');
+      return { success: true };
+    } catch (error) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      const message = error?.response?.data?.message || 'OAuth sign-in failed';
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -79,7 +96,8 @@ export const AuthProvider = ({ children }) => {
       login,
       register,
       logout,
-      updateUser
+      updateUser,
+      handleOAuthToken
     }}>
       {children}
     </AuthContext.Provider>

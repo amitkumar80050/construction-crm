@@ -1,122 +1,84 @@
-import React from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { FaHome, FaUsers, FaComment, FaBell, FaPhone, FaUser, FaCog, FaSignOutAlt, FaFileExport } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 
-const UserLayout = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+const SIDEBAR_COLLAPSED_WIDTH = 72;
+const SIDEBAR_EXPANDED_WIDTH = 240;
+const HEADER_HEIGHT = 64;
 
-  const navItems = [
-    { path: '/dashboard', icon: FaHome, label: 'Dashboard' },
-    { path: '/clients', icon: FaUsers, label: 'Leads' },
-    { path: '/remarks', icon: FaComment, label: 'Remarks' },
-    { path: '/reminders', icon: FaBell, label: 'Reminders' },
-    // { path: '/calling', icon: FaPhone, label: 'Calling' },
-    { path: '/export', icon: FaFileExport, label: 'Export Data' },  
-  ];
+const UserLayout = () => {
+  const [pinned, setPinned] = useState(false);
+
+  // Content only shifts when pinned open; otherwise the sidebar
+  // stays visually 72px and expands as a hover overlay on top of content.
+  const contentOffset = pinned ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar */}
-      <div style={{ 
-        width: '250px', 
-        background: '#0f172a', 
-        color: 'white', 
-        padding: '20px',
-        position: 'fixed',
-        height: '100vh',
-        overflowY: 'auto'
-      }}>
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            🏗️ CRM
-          </h2>
-          <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>User Panel</p>
-        </div>
-
-        <nav>
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '10px 16px',
-                marginBottom: '4px',
-                borderRadius: '8px',
-                color: '#94a3b8',
-                textDecoration: 'none',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#1e293b';
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#94a3b8';
-              }}
-            >
-              <item.icon size={18} />
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        <div style={{ marginTop: 'auto', borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
-          <Link
-            to="/profile"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '10px 16px',
-              borderRadius: '8px',
-              color: '#94a3b8',
-              textDecoration: 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            <FaUser size={18} />
-            <span>Profile</span>
-          </Link>
-          <button
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '10px 16px',
-              borderRadius: '8px',
-              color: '#94a3b8',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              width: '100%',
-              transition: 'all 0.2s'
-            }}
-          >
-            <FaSignOutAlt size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
+    <div style={{ minHeight: '100vh' }}>
+      {/* Fixed sidebar — CSS handles hover-expand internally */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 1030
+        }}
+      >
+        <Sidebar pinned={pinned} onTogglePin={() => setPinned((p) => !p)} />
       </div>
 
-      <div style={{ marginLeft: '250px', flex: 1, minHeight: '100vh' }} className="d-flex flex-column">
+      {/* Fixed header */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: `${contentOffset}px`,
+          right: 0,
+          height: `${HEADER_HEIGHT}px`,
+          zIndex: 1020,
+          transition: 'left 0.25s ease'
+        }}
+      >
         <Header />
-        <main className="flex-grow-1 bg-light p-4">
-          <Outlet />
-        </main>
+      </div>
+
+      {/* Scrollable content */}
+      <main
+        style={{
+          marginLeft: `${contentOffset}px`,
+          marginTop: `${HEADER_HEIGHT}px`,
+          minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
+          padding: '20px',
+          position: 'relative',
+          zindex: 1,
+          background: '#f8fafc',
+          transition: 'margin-left 0.25s ease',
+          paddingBottom: '80px'
+        }}
+      >
+        <Outlet />
+
+        {/* Fixed footer */}
+      <div
+        style={{
+          position: 'relative',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 4,
+          transition: 'left 0.25s ease',
+          // maxHeight: '45vh',
+          // overflowY: 'auto'
+        }}
+      >
         <Footer />
       </div>
+      </main>
+
+      
     </div>
   );
 };

@@ -3,6 +3,9 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
+const passport = require('./config/passport');
+const importRoutes = require('./routes/importRoutes');
+// ...
 
 dotenv.config();
 
@@ -12,7 +15,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+app.use(passport.initialize());
 app.set('etag', false);
+app.use('/api/import', importRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({

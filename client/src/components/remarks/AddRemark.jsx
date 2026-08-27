@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { FaPaperPlane, FaTimes } from 'react-icons/fa';
-import remarkService from '../../services/remarkService';
+import { FaPlus, FaTimes } from 'react-icons/fa';
+import reminderService from '../../services/reminderService';
 
-const AddRemark = ({ clientId, onAdded, onCancel }) => {
+const AddReminder = ({ clientId, onAdded, onCancel }) => {
   const [form, setForm] = useState({
-    content: '',
-    type: 'note',
-    visibility: 'public'
+    title: '',
+    description: '',
+    dueDate: '',
+    priority: 'medium',
+    type: 'task'
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,28 +20,30 @@ const AddRemark = ({ clientId, onAdded, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.content.trim()) {
-      toast.error('Please enter remark content');
+    if (!form.title.trim() || !form.dueDate) {
+      toast.error('Please add a title and due date');
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await remarkService.createRemark({
+      const res = await reminderService.createReminder({
         client: clientId,
-        content: form.content.trim(),
-        type: form.type,
-        visibility: form.visibility
+        title: form.title.trim(),
+        description: form.description.trim(),
+        dueDate: form.dueDate,
+        priority: form.priority,
+        type: form.type
       });
 
       const created = res.data?.data || res.data;
 
-      toast.success('Remark added successfully!');
-      setForm({ content: '', type: 'note', visibility: 'public' });
+      toast.success('Reminder added successfully!');
+      setForm({ title: '', description: '', dueDate: '', priority: 'medium', type: 'task' });
 
       if (onAdded) onAdded(created);
     } catch (error) {
-      const msg = error.response?.data?.message || 'Failed to add remark';
+      const msg = error.response?.data?.message || 'Failed to add reminder';
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -58,7 +62,7 @@ const AddRemark = ({ clientId, onAdded, onCancel }) => {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <strong style={{ color: '#1e293b', fontSize: '14px' }}>New Remark</strong>
+        <strong style={{ color: '#1e293b', fontSize: '14px' }}>New Reminder</strong>
         {onCancel && (
           <button
             type="button"
@@ -70,12 +74,26 @@ const AddRemark = ({ clientId, onAdded, onCancel }) => {
         )}
       </div>
 
-      <textarea
-        value={form.content}
-        onChange={(e) => handleChange('content', e.target.value)}
-        placeholder="Write a remark..."
-        rows="3"
+      <input
+        type="text"
+        value={form.title}
+        onChange={(e) => handleChange('title', e.target.value)}
+        placeholder="Reminder title"
         autoFocus
+        style={{
+          width: '100%',
+          padding: '10px',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          marginBottom: '10px'
+        }}
+      />
+
+      <textarea
+        value={form.description}
+        onChange={(e) => handleChange('description', e.target.value)}
+        placeholder="Description (optional)"
+        rows="2"
         style={{
           width: '100%',
           padding: '10px',
@@ -83,31 +101,44 @@ const AddRemark = ({ clientId, onAdded, onCancel }) => {
           borderRadius: '8px',
           resize: 'vertical',
           fontFamily: 'inherit',
-          marginBottom: '12px'
+          marginBottom: '10px'
+        }}
+      />
+
+      <input
+        type="datetime-local"
+        value={form.dueDate}
+        onChange={(e) => handleChange('dueDate', e.target.value)}
+        style={{
+          width: '100%',
+          padding: '10px',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          marginBottom: '10px'
         }}
       />
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <select
+          value={form.priority}
+          onChange={(e) => handleChange('priority', e.target.value)}
+          style={{ flex: 1, padding: '8px', border: '1px solid #e2e8f0', borderRadius: '8px', minWidth: '120px' }}
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+
+        <select
           value={form.type}
           onChange={(e) => handleChange('type', e.target.value)}
           style={{ flex: 1, padding: '8px', border: '1px solid #e2e8f0', borderRadius: '8px', minWidth: '120px' }}
         >
-          <option value="note">Note</option>
+          <option value="task">Task</option>
           <option value="call">Call</option>
           <option value="meeting">Meeting</option>
-          <option value="email">Email</option>
           <option value="follow-up">Follow-up</option>
-        </select>
-
-        <select
-          value={form.visibility}
-          onChange={(e) => handleChange('visibility', e.target.value)}
-          style={{ flex: 1, padding: '8px', border: '1px solid #e2e8f0', borderRadius: '8px', minWidth: '120px' }}
-        >
-          <option value="public">Public</option>
-          <option value="team">Team</option>
-          <option value="private">Private</option>
+          <option value="other">Other</option>
         </select>
       </div>
 
@@ -143,11 +174,11 @@ const AddRemark = ({ clientId, onAdded, onCancel }) => {
             gap: '6px'
           }}
         >
-          <FaPaperPlane size={12} /> {submitting ? 'Adding...' : 'Add Remark'}
+          <FaPlus size={12} /> {submitting ? 'Adding...' : 'Add Reminder'}
         </button>
       </div>
     </form>
   );
 };
 
-export default AddRemark;
+export default AddReminder;
