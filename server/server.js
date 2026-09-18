@@ -2,6 +2,15 @@ const app = require('./app');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
+const http = require('http');
+const { Server } = require('socket.io');
+const initSocket = require('./sockets');
+
+
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️  Unhandled Rejection:', reason);
+});
+
 // Load environment variables
 dotenv.config();
 
@@ -25,9 +34,13 @@ if (process.env.MONGO_URI) {
   startServer();
 }
 
+// Replace app.listen(PORT, ...) with:
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, { cors: { origin: process.env.CLIENT_URL || 'http://localhost:3000' } });
+initSocket(io);
+
 function startServer() {
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`📍 http://localhost:${PORT}`);
   });
 }

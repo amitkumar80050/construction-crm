@@ -5,6 +5,11 @@ const dotenv = require('dotenv');
 const path = require('path');
 const passport = require('./config/passport');
 const importRoutes = require('./routes/importRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
+const whatsappRoutes = require('./routes/whatsappRoutes');
+const teamRoutes = require('./routes/teamRoutes');
+const teamChatRoutes = require('./routes/teamChatRoutes');
+
 // ...
 
 dotenv.config();
@@ -18,6 +23,10 @@ app.use(morgan('dev'));
 app.use(passport.initialize());
 app.set('etag', false);
 app.use('/api/import', importRoutes);
+app.use('/api', activityLogRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/teams', teamChatRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({

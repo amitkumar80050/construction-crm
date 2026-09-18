@@ -6,6 +6,12 @@ const activitySchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  userIdSnapshot: String,   // CRM userId (CON-00021) at time of action, so logs remain readable even if user is later deleted
+  userNameSnapshot: String, // name at time of action
+  targetId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  targetType: { type: String, default: null }, // 'Client', 'Remark', 'Stage', 'Reminder', 'User'
+  ipAddress: String,
+  
   client: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client',

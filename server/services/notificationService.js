@@ -1,7 +1,6 @@
 const nodemailer = require('nodemailer');
 const config = require('../config/env');
 
-// Create transporter
 const transporter = nodemailer.createTransport({
   host: config.smtpHost,
   port: config.smtpPort,
@@ -12,7 +11,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Send welcome email
 const sendWelcomeEmail = async (email, name) => {
   try {
     await transporter.sendMail({
@@ -32,11 +30,9 @@ const sendWelcomeEmail = async (email, name) => {
   }
 };
 
-// Send reset password email
 const sendResetPasswordEmail = async (email, name, token) => {
   try {
     const resetUrl = `${config.clientUrl}/reset-password/${token}`;
-    
     await transporter.sendMail({
       from: `"Construction CRM" <${config.smtpUser}>`,
       to: email,
@@ -55,11 +51,30 @@ const sendResetPasswordEmail = async (email, name, token) => {
   }
 };
 
-// Send reminder email
+const sendOtpEmail = async (email, name, otp, expiryMinutes) => {
+  try {
+    await transporter.sendMail({
+      from: `"Construction CRM" <${config.smtpUser}>`,
+      to: email,
+      subject: 'Your Verification Code',
+      html: `
+        <h1>Verification Code</h1>
+        <p>Hello ${name},</p>
+        <p>Your verification code is:</p>
+        <h2 style="letter-spacing: 4px;">${otp}</h2>
+        <p>This code will expire in ${expiryMinutes} minutes.</p>
+        <p>If you did not request this code, please contact your administrator immediately.</p>
+      `,
+    });
+  } catch (error) {
+    console.error('OTP email error:', error);
+    throw error;
+  }
+};
+
 const sendReminderEmail = async (reminder) => {
   try {
     const client = await reminder.populate('client', 'name company email');
-    
     await transporter.sendMail({
       from: `"Construction CRM Reminders" <${config.smtpUser}>`,
       to: reminder.user.email,
@@ -80,8 +95,35 @@ const sendReminderEmail = async (reminder) => {
   }
 };
 
+const sendUserCreatedOtpEmail = async (email, name, userId, otp, expiryMinutes) => {
+  try {
+    await transporter.sendMail({
+      from: `"Construction CRM" <${config.smtpUser}>`,
+      to: email,
+      subject: 'BuildFlow CRM - Verify Your Account',
+      html: `
+        <h1>Verify Your Account</h1>
+        <p>Hello ${name},</p>
+        <p>Your BuildFlow CRM account has been created by the administrator.</p>
+        <p><strong>User ID:</strong> ${userId}</p>
+        <p>Your verification OTP is:</p>
+        <h2 style="letter-spacing: 4px;">${otp}</h2>
+        <p>This OTP is valid for ${expiryMinutes} minutes.</p>
+        <p>Please use this OTP to verify your account.</p>
+        <p>If you did not expect this account, please contact your administrator.</p>
+        <p>Regards,<br/>BuildFlow CRM</p>
+      `,
+    });
+  } catch (error) {
+    console.error('User-created OTP email error:', error);
+    throw error; // caller must know if this failed, so it can leave the user in a resendable state
+  }
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendResetPasswordEmail,
+  sendOtpEmail,
   sendReminderEmail,
+  sendUserCreatedOtpEmail,
 };

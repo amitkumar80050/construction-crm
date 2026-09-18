@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const Activity = require('../models/Activity');
+const otpService = require('../services/otpService');
+const { sendUserCreatedOtpEmail } = require('../services/notificationService');
 const {
   validateCreateUser,
   validateUpdateUser,
@@ -98,8 +100,9 @@ const createUser = async (req, res) => {
     }
 
     const { name, email, password, phone, role, department, permissions } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(400).json({ success: false, message: 'User already exists with this email' });
     }
@@ -109,24 +112,48 @@ const createUser = async (req, res) => {
     const user = await User.create({
       userId,
       name,
-      email,
+      email: normalizedEmail,
       password,
       phone,
       role: role || 'user',
       department: department || 'sales',
       permissions: Array.isArray(permissions) ? permissions : [],
+      status: 'PENDING_VERIFICATION',
+      emailVerified: false,
+      createdBy: req.user.id,
     });
+
+    // Generate + send OTP. If the email fails, the user record still exists
+    // in PENDING_VERIFICATION state so the admin can trigger a resend later —
+    // we do NOT roll back user creation on email failure.
+    let otpSent = true;
+    let otpErrorMessage = null;
+    try {
+      const { otp } = await otpService.createOtpForUser(user._id, 'ADMIN_USER_CREATION');
+      await sendUserCreatedOtpEmail(user.email, user.name, user.userId, otp, otpService.OTP_EXPIRY_MINUTES);
+    } catch (emailError) {
+      console.error('Failed to send OTP on user creation:', emailError.message);
+      otpSent = false;
+      otpErrorMessage = 'User created, but the verification email could not be sent. Use "Resend OTP" to try again.';
+    }
 
     await Activity.create({
       user: req.user.id,
       type: 'create',
       module: 'user',
-      description: `Created user: ${user.email}`,
+      description: `Created user: ${user.email} (pending verification)`,
     });
 
     const created = await User.findById(user._id).select('-password -refreshToken');
 
-    res.status(201).json({ success: true, data: created });
+    res.status(201).json({
+      success: true,
+      message: otpSent
+        ? 'User created successfully. Verification OTP has been sent to the registered email.'
+        : otpErrorMessage,
+      otpSent,
+      data: created,
+    });
   } catch (error) {
     console.error(error);
     if (error.name === 'ValidationError') {

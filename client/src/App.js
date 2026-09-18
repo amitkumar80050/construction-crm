@@ -15,7 +15,7 @@ import AuthLayout from './layouts/AuthLayout';
 
 // Pages
 import Login from './pages/Login';
-import Signup from './pages/Signup';
+
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientProfile from './pages/ClientProfile';
@@ -28,6 +28,15 @@ import Analytics from './pages/Analytics';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+import MyLogs from './pages/logs/MyLogs';
+import EmployeeLogs from './pages/manager/EmployeeLogs';
+import EmployeeLogDetails from './pages/manager/EmployeeLogDetails';
+import TeamManagement from './pages/admin/TeamManagement';
+import TeamChat from './pages/TeamChat';
+import WhatsApp from './pages/WhatsApp';
+import MyTeam from './pages/MyTeam';
+
+
 
 // Route Guards
 import PrivateRoute from './routes/PrivateRoute';
@@ -37,6 +46,8 @@ import AdminRoute from './routes/AdminRoute';
 import { useAuth } from './hooks/useAuth';
 import ImportData from './pages/ImportData';
 import EditClient from './pages/EditClient';
+import VerifyOTP from './pages/VerifyOTP';
+import VerifyUser from './pages/VerifyUser';
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
@@ -47,7 +58,8 @@ function AppContent() {
         {/* Auth Routes */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
-          <Route path="/signup" element={!isAuthenticated ? <Signup /> : <Navigate to="/dashboard" />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
+          <Route path="/verify-user" element={<VerifyUser />} />
         </Route>
 
         {/* Protected Routes */}
@@ -63,6 +75,10 @@ function AppContent() {
             <Route path="/reminders" element={<Reminders />} />
             {/* <Route path="/calling" element={<CallingPanel />} /> */}
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/whatsapp" element={<WhatsApp />} />
+            <Route path="/my-team" element={<MyTeam />} />
+            <Route path="/my-team/:teamId" element={<TeamChat />} />
+            <Route path="/logs" element={<MyLogs />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             
@@ -70,8 +86,20 @@ function AppContent() {
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<Users />} />
               <Route path="/import" element={<ImportData />} />
+              <Route path="/teams" element={<TeamManagement />} />
+              <Route path="/teams/:teamId/chat" element={<TeamChat />} />
             </Route>
           </Route>
+        </Route>
+
+        <Route element={<AdminRoute />}>
+          <Route path="/manager/logs/employees" element={<EmployeeLogs />} />
+          <Route path="/manager/logs/:userId" element={<EmployeeLogDetails />} />
+        </Route>
+
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/dashboard" />} />

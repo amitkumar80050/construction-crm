@@ -30,8 +30,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'user'],
-    default: 'user',
+    enum: ['admin', 'manager', 'telecaller', 'sales executer'],
+    default: 'telecaller',
   },
   phone: {
     type: String,
@@ -58,6 +58,24 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+
+  status: {
+    type: String,
+    enum: ['PENDING_VERIFICATION', 'ACTIVE', 'INACTIVE', 'SUSPENDED'],
+    default: 'ACTIVE', // existing self-registered/OAuth users stay ACTIVE; only admin-created users start PENDING
+  },
+  emailVerified: {
+    type: Boolean,
+    default: true, // existing users are grandfathered in as verified
+  },
+  emailVerifiedAt: {
+    type: Date,
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+
   lastLogin: {
     type: Date,
   },
@@ -75,6 +93,7 @@ const userSchema = new mongoose.Schema({
     default: Date.now,
   },
 
+    teamIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
 
   isDeleted: {
     type: Boolean,

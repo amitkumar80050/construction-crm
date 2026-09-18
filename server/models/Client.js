@@ -72,6 +72,9 @@ const clientSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+
+  team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
+
   updatedAt: {
     type: Date,
     default: Date.now,

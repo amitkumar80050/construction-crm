@@ -17,6 +17,13 @@ const Login = () => {
 
   const oauthError = searchParams.get('error');
 
+    const errorMessages = {
+        not_registered: 'This Google account is not registered for this CRM. Please contact the administrator.',
+        inactive: 'Your account is inactive. Please contact the administrator.',
+        google_mismatch: 'This Google account cannot be used to sign in. Please contact the administrator.',
+        google_failed: 'Google sign-in failed. Please try again.',
+      };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -28,6 +35,8 @@ const Login = () => {
     setLoading(false);
     if (result.success) {
       navigate('/dashboard');
+    } else if (result.requiresVerification) {
+      navigate(`/verify-user?userId=${encodeURIComponent(result.userId)}`);
     }
   };
 
@@ -59,15 +68,17 @@ const Login = () => {
     }}>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', color: '#1e293b' }}>🏗️ BuildTrack Pro CRM</h1>
-        <p style={{ color: '#64748b', marginTop: '8px' }}>Sign in to your account</p>
+        <p style={{ color: '#64748b', marginTop: '8px' }}>Log in to your account</p>
       </div>
 
       {oauthError && (
         <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', textAlign: 'center' }}>
-          Sign-in failed. Please try again.
+          {errorMessages[oauthError] || 'LogIn failed. Please try again.'}
         </div>
       )}
 
+    
+      
       {/* OAuth buttons */}
       <div style={{ marginBottom: '20px' }}>
         <a href={`${API_BASE}/auth/google`} style={{ textDecoration: 'none' }}>
@@ -75,21 +86,12 @@ const Login = () => {
             <FaGoogle /> Continue with Google
           </button>
         </a>
-        <a href={`${API_BASE}/auth/github`} style={{ textDecoration: 'none' }}>
-          <button type="button" style={oauthBtnStyle('#24292e')}>
-            <FaGithub /> Continue with GitHub
-          </button>
-        </a>
-        <a href={`${API_BASE}/auth/linkedin`} style={{ textDecoration: 'none' }}>
-          <button type="button" style={oauthBtnStyle('#0A66C2')}>
-            <FaLinkedin /> Continue with LinkedIn
-          </button>
-        </a>
+        
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '20px 0', color: '#94a3b8', fontSize: '12px' }}>
         <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-        OR SIGN IN WITH EMAIL
+        OR LOG IN WITH EMAIL
         <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
       </div>
 
@@ -135,14 +137,10 @@ const Login = () => {
           onMouseEnter={(e) => (e.currentTarget.style.background = '#1d4ed8')}
           onMouseLeave={(e) => (e.currentTarget.style.background = '#2563eb')}
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loading ? 'Signing in...' : 'LogIn'}
         </button>
 
-        <div style={{ textAlign: 'center', marginTop: '20px', color: '#64748b' }}>
-          <p>
-            Don't have an account? <Link to="/signup" style={{ color: '#2563eb', textDecoration: 'none' }}>Sign Up</Link>
-          </p>
-        </div>
+        
       </form>
     </div>
   );

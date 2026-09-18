@@ -9,6 +9,15 @@ const getClients = async (req, res) => {
   try {
     let query = {};
 
+
+    if (req.user.role !== 'admin') {
+      if (req.user.teamIds?.length) {
+        query.$or = [{ team: { $in: req.user.teamIds } }, { assignedTo: req.user.id }];
+      } else {
+        query.assignedTo = req.user.id; // no team → only see own assigned clients
+      }
+    }
+
     // Filter by status
     if (req.query.status) {
       query.status = req.query.status;

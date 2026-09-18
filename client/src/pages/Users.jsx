@@ -7,7 +7,7 @@ import {
 import userService from '../services/userService';
 import { useAuth } from '../hooks/useAuth';
 
-const ROLES = ['admin', 'manager', 'user'];
+const ROLES = ['admin', 'manager', 'telecaller','sales executer'];
 const DEPARTMENTS = ['sales', 'marketing', 'operations', 'management'];
 const PERMISSIONS = [
   'manage_leads', 'manage_remarks', 'manage_stages',
@@ -16,7 +16,7 @@ const PERMISSIONS = [
 ];
 
 const emptyCreateForm = {
-  name: '', email: '', password: '', phone: '', role: 'user', department: 'sales'
+  name: '', email: '', password: '', phone: '', role: 'telecaller', department: 'sales'
 };
 
 const Users = () => {
@@ -98,24 +98,26 @@ const Users = () => {
   };
 
   // --- Create ---
-  const handleCreateUser = async () => {
-    if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password || !createForm.phone.trim()) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    setCreating(true);
-    try {
-      await userService.createUser(createForm);
-      toast.success('User created successfully!');
-      setShowCreateModal(false);
-      setCreateForm(emptyCreateForm);
-      fetchUsers();
-    } catch (error) {
-      toast.error(error?.response?.data?.message || 'Unable to create user');
-    } finally {
-      setCreating(false);
-    }
-  };
+ const handleCreateUser = async () => {
+  if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password || !createForm.phone.trim()) {
+    toast.error('Please fill in all required fields');
+    return;
+  }
+  setCreating(true);
+  try {
+    const res = await userService.createUser(createForm);
+    const { data, message } = res.data;
+    toast.success(message);
+    toast.info(`User ID: ${data.userId} | Email: ${data.email} | Status: Pending Verification`, { autoClose: 8000 });
+    setShowCreateModal(false);
+    setCreateForm(emptyCreateForm);
+    fetchUsers();
+  } catch (error) {
+    toast.error(error?.response?.data?.message || 'Unable to create user');
+  } finally {
+    setCreating(false);
+  }
+};
 
   // --- Edit ---
   const openEdit = (user) => {
@@ -332,7 +334,9 @@ const Users = () => {
                     <td style={{ padding: '14px' }}>
                       {u.isDeleted ? (
                         <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', background: '#f1f5f9', color: '#64748b' }}>Deleted</span>
-                      ) : (
+                      ) : u.status === 'PENDING_VERIFICATION' ? (
+                          <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', background: '#fef3c7', color: '#d97706' }}>Pending Verification</span>
+                        ) :(
                         <span style={{
                           padding: '4px 12px', borderRadius: '20px', fontSize: '12px',
                           background: u.isActive ? '#dcfce7' : '#fee2e2',

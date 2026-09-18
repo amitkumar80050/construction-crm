@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   FaHome, FaUsers, FaComment, FaLayerGroup, FaBell,
   FaChartBar, FaUserCog, FaCog, FaFileImport, FaFileExport,
-  FaThumbtack
+  FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends
 } from 'react-icons/fa';
 import './Sidebar.css';
 
@@ -19,12 +19,16 @@ const Sidebar = ({ pinned, onTogglePin }) => {
     { path: '/stages', icon: FaLayerGroup, label: 'Stages' },
     { path: '/reminders', icon: FaBell, label: 'Reminders' },
     { path: '/analytics', icon: FaChartBar, label: 'Analytics' },
+    { path: '/whatsapp', icon: FaWhatsapp, label: 'WhatsApp' },
+    { path: '/my-team', icon: FaUserFriends, label: 'My Team' },
+    { path: '/logs', icon: FaHistory, label : 'My Logs' },
   ];
 
   const adminItems = [
     { path: '/users', icon: FaUserCog, label: 'Users' },
     { path: '/import', icon: FaFileImport, label: 'Import' },
     { path: '/export', icon: FaFileExport, label: 'Export' },
+    
   ];
 
   return (

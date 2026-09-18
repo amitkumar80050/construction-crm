@@ -3,6 +3,8 @@ const Activity = require('../models/Activity');
 const { generateToken } = require('../config/jwt');
 const { sendWelcomeEmail, sendResetPasswordEmail } = require('../services/notificationService');
 const crypto = require('crypto');
+const otpService = require('../services/otpService');
+
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -105,14 +107,6 @@ const login = async (req, res) => {
       });
     }
 
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is disabled. Please contact administrator',
-      });
-    }
-
     // Check if password matches
     const isPasswordMatch = await user.matchPassword(password);
     if (!isPasswordMatch) {
@@ -120,6 +114,18 @@ const login = async (req, res) => {
         success: false,
         message: 'Invalid credentials',
       });
+    }
+
+    if (user.status === 'PENDING_VERIFICATION') {
+      return res.status(403).json({
+        success: false,
+        message: 'Please verify your account first. Check your email for the OTP, or use the verification page.',
+        requiresVerification: true,
+        userId: user.userId,
+      });
+    }
+    if (user.status === 'SUSPENDED' || user.status === 'INACTIVE') {
+      return res.status(403).json({ success: false, message: 'Your account is not active. Contact your administrator.' });
     }
 
    // Update last login (skip full validation so unrelated legacy fields
@@ -394,6 +400,81 @@ const changePassword = async (req, res) => {
   }
 };
 
+// @desc    Verify OTP for an admin-created user, activating their account
+// @route   POST /api/auth/verify-user-otp
+// @access  Public
+const verifyUserOtp = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+    if (!userId || !otp) {
+      return res.status(400).json({ success: false, message: 'User ID and OTP are required' });
+    }
+
+    // Accept either the CRM userId (CON-00027) or email — matches the UI's "User ID / Email" field
+    const user = await User.findOne({ $or: [{ userId }, { email: userId.toLowerCase() }] });
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification code.' });
+    }
+
+    if (user.status !== 'PENDING_VERIFICATION') {
+      return res.status(400).json({ success: false, message: 'This account is already verified.' });
+    }
+
+    const result = await otpService.verifyOtp(user._id, otp, 'ADMIN_USER_CREATION');
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.message });
+    }
+
+    user.emailVerified = true;
+    user.status = 'ACTIVE';
+    user.emailVerifiedAt = Date.now();
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      success: true,
+      message: 'Account verified successfully! Your BuildFlow CRM account is now active.',
+      data: { userId: user.userId },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Resend OTP for an admin-created user pending verification
+// @route   POST /api/auth/resend-user-otp
+// @access  Public
+const resendUserOtp = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    const user = await User.findOne({ $or: [{ userId }, { email: userId.toLowerCase() }] });
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid request.' });
+    }
+    if (user.status !== 'PENDING_VERIFICATION') {
+      return res.status(400).json({ success: false, message: 'This account is already verified.' });
+    }
+
+    const { allowed, retryAfter } = await otpService.canResend(user._id, 'ADMIN_USER_CREATION');
+    if (!allowed) {
+      return res.status(429).json({ success: false, message: `Please wait ${retryAfter}s before requesting a new code.` });
+    }
+
+    const { sendUserCreatedOtpEmail } = require('../services/notificationService');
+    const { otp, expiresInSeconds } = await otpService.createOtpForUser(user._id, 'ADMIN_USER_CREATION');
+    await sendUserCreatedOtpEmail(user.email, user.name, user.userId, otp, otpService.OTP_EXPIRY_MINUTES);
+
+    res.status(200).json({ success: true, message: 'A new OTP has been sent.', expiresInSeconds });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -403,4 +484,6 @@ module.exports = {
   resetPassword,
   updateProfile,
   changePassword,
+  verifyUserOtp, 
+  resendUserOtp, // add these two
 };

@@ -1,4 +1,4 @@
-const VALID_ROLES = ['admin', 'manager', 'user'];
+const VALID_ROLES = ['admin', 'manager', 'telecaller', 'sales executer'];
 const VALID_DEPARTMENTS = ['sales', 'marketing', 'operations', 'management'];
 const VALID_PERMISSIONS = [
   'manage_leads', 'manage_remarks', 'manage_stages',

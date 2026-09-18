@@ -38,6 +38,14 @@ const authService = {
 changePassword: async (data) => {
   return await api.put('/auth/change-password', data);
 },
+
+verifyUserOtp: async (userId, otp) => {
+  return await api.post('/auth/verify-user-otp', { userId, otp });
+},
+resendUserOtp: async (userId) => {
+  return await api.post('/auth/resend-user-otp', { userId });
+},
+
 };
 
 export default authService;
