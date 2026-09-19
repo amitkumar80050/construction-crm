@@ -1,4 +1,7 @@
 const User = require('../models/User');
+const Team = require('../models/Team');
+const TeamChannel = require('../models/TeamChannel');
+const TeamMessage = require('../models/TeamMessage');
 const Stage = require('../models/Stage');
 const Client = require('../models/Client');
 const Remark = require('../models/Remark');
@@ -49,6 +52,36 @@ const seedDatabase = async (req, res) => {
       const user = await User.create({ ...userData, userId });
       users.push(user);
     }
+
+    const demoTeam = await Team.create({
+      name: 'Demo Construction Team',
+      code: 'DEMO-01',
+      department: 'operations',
+      description: 'Sample team for internal communication and collaboration.',
+      teamLead: users[1]._id,
+      status: 'ACTIVE',
+      createdBy: users[0]._id,
+    });
+
+    await User.updateMany(
+      { _id: { $in: users.map((user) => user._id) } },
+      { $set: { teamIds: [demoTeam._id] } }
+    );
+
+    const demoChannel = await TeamChannel.create({
+      team: demoTeam._id,
+      name: 'general',
+      createdBy: users[0]._id,
+    });
+
+    await TeamMessage.create({
+      channel: demoChannel._id,
+      team: demoTeam._id,
+      sender: users[1]._id,
+      senderName: users[1].name,
+      message: 'Welcome to the Demo Construction Team. Use this workspace to coordinate progress and updates.',
+      readBy: [users[1]._id],
+    });
 
     const stages = await Stage.create([
       { name: 'Prospect', description: 'New lead captured and under qualification.', order: 1, color: '#2563eb' },
@@ -207,6 +240,8 @@ const seedDatabase = async (req, res) => {
       success: true,
       message: 'Database seeded successfully',
       users: users.length,
+      teams: 1,
+      channels: 1,
       stages: stages.length,
       clients: clients.length,
       remarks: remarksData.length,

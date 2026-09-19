@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaGoogle, FaGithub, FaLinkedin } from 'react-icons/fa';
+
 import { useAuth } from '../hooks/useAuth';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -80,18 +80,11 @@ const Login = () => {
     
       
       {/* OAuth buttons */}
-      <div style={{ marginBottom: '20px' }}>
-        <a href={`${API_BASE}/auth/google`} style={{ textDecoration: 'none' }}>
-          <button type="button" style={oauthBtnStyle('#DB4437')}>
-            <FaGoogle /> Continue with Google
-          </button>
-        </a>
-        
-      </div>
+      
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '20px 0', color: '#94a3b8', fontSize: '12px' }}>
         <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-        OR LOG IN WITH EMAIL
+        LOG IN WITH EMAIL
         <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
       </div>
 

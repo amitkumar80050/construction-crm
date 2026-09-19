@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
+const Team = require('../models/Team');
 const Activity = require('../models/Activity');
 const otpService = require('../services/otpService');
 const { sendUserCreatedOtpEmail } = require('../services/notificationService');
@@ -9,6 +11,41 @@ const {
   validateAssignRole,
   validateAssignPermissions,
 } = require('../validations/userValidation');
+
+const normalizeTeamIds = async (rawValue) => {
+  if (rawValue === undefined || rawValue === null || rawValue === '') return [];
+
+  const entries = Array.isArray(rawValue) ? rawValue : [rawValue];
+  const resolved = [];
+
+  for (const item of entries) {
+    const value = typeof item === 'string' ? item.trim() : item;
+    if (!value) continue;
+
+    if (typeof value === 'string' && mongoose.Types.ObjectId.isValid(value)) {
+      resolved.push(value);
+      continue;
+    }
+
+    const teamNameValue = typeof value === 'string' ? value : value?.name || value?.code || value?._id;
+    if (!teamNameValue) continue;
+
+    const team = await Team.findOne({
+      $or: [
+        { name: new RegExp(`^${teamNameValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        { code: new RegExp(`^${teamNameValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      ],
+    }).lean();
+
+    if (!team) {
+      throw new Error(`Team "${teamNameValue}" not found`);
+    }
+
+    resolved.push(String(team._id));
+  }
+
+  return [...new Set(resolved)];
+};
 
 // @desc    Get all users (search, filter, sort, paginate)
 // @route   GET /api/users
@@ -52,6 +89,7 @@ const getUsers = async (req, res) => {
     const total = await User.countDocuments(query);
 
     const users = await User.find(query)
+      .populate('teamIds', 'name code')
       .select('-password -refreshToken -resetPasswordToken -resetPasswordExpire')
       .sort(sort)
       .limit(limit)
@@ -99,8 +137,13 @@ const createUser = async (req, res) => {
       return res.status(400).json({ success: false, message: errors.join(', ') });
     }
 
-    const { name, email, password, phone, role, department, permissions } = req.body;
+    const { name, email, password, phone, role, department, permissions, teamIds, teams } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
+
+    let resolvedTeamIds = [];
+    if (teamIds !== undefined || teams !== undefined) {
+      resolvedTeamIds = await normalizeTeamIds(teamIds ?? teams);
+    }
 
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
@@ -118,6 +161,7 @@ const createUser = async (req, res) => {
       role: role || 'user',
       department: department || 'sales',
       permissions: Array.isArray(permissions) ? permissions : [],
+      teamIds: resolvedTeamIds,
       status: 'PENDING_VERIFICATION',
       emailVerified: false,
       createdBy: req.user.id,
@@ -177,8 +221,12 @@ const updateUser = async (req, res) => {
       return res.status(400).json({ success: false, message: errors.join(', ') });
     }
 
-    const { password, role, permissions, ...updateData } = req.body; // eslint-disable-line no-unused-vars
+    const { password, role, permissions, teamIds, teams, ...updateData } = req.body; // eslint-disable-line no-unused-vars
     // Password, role, and permissions have dedicated endpoints — ignored here for clarity/safety
+
+    if (teamIds !== undefined || teams !== undefined) {
+      updateData.teamIds = await normalizeTeamIds(teamIds ?? teams);
+    }
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,

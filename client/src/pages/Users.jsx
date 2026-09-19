@@ -5,10 +5,10 @@ import {
   FaUserShield, FaShieldAlt, FaSort, FaSortUp, FaSortDown, FaBan
 } from 'react-icons/fa';
 import userService from '../services/userService';
+import teamService from '../services/teamService';
 import { useAuth } from '../hooks/useAuth';
 
 const ROLES = ['admin', 'manager', 'telecaller','sales executer'];
-const DEPARTMENTS = ['sales', 'marketing', 'operations', 'management'];
 const PERMISSIONS = [
   'manage_leads', 'manage_remarks', 'manage_stages',
   'manage_reminders', 'manage_users', 'view_analytics',
@@ -16,13 +16,14 @@ const PERMISSIONS = [
 ];
 
 const emptyCreateForm = {
-  name: '', email: '', password: '', phone: '', role: 'telecaller', department: 'sales'
+  name: '', email: '', password: '', phone: '', role: 'telecaller', teamIds: 'lko'
 };
 
 const Users = () => {
   const { user: currentUser } = useAuth();
 
   const [users, setUsers] = useState([]);
+  const [availableTeams, setAvailableTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
@@ -43,7 +44,7 @@ const Users = () => {
   const [creating, setCreating] = useState(false);
 
   const [editingUser, setEditingUser] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', department: 'sales' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', teamIds: '' });
   const [saving, setSaving] = useState(false);
 
   const [passwordModalUser, setPasswordModalUser] = useState(null);
@@ -58,6 +59,17 @@ const Users = () => {
   const [selectedPerms, setSelectedPerms] = useState([]);
   const [savingPerms, setSavingPerms] = useState(false);
 
+  const normalizeTeams = (value) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((team) => (typeof team === 'string' ? team.trim() : team?.name || team?.code || team?._id))
+        .filter(Boolean);
+    }
+    if (typeof value === 'string' && value.trim()) return [value.trim()];
+    if (value && typeof value === 'object') return [value.name || value.code || value._id].filter(Boolean);
+    return [];
+  };
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,10 +79,14 @@ const Users = () => {
       if (statusFilter !== 'all') params.status = statusFilter;
       if (showDeleted) params.deletedOnly = 'true';
 
-      const res = await userService.getUsers(params);
-      setUsers(res.data?.data || []);
-      setTotal(res.data?.total || 0);
-      setPages(res.data?.pages || 1);
+      const [usersRes, teamsRes] = await Promise.all([
+        userService.getUsers(params),
+        teamService.getTeams(),
+      ]);
+      setUsers(usersRes.data?.data || []);
+      setAvailableTeams(teamsRes.data?.data || []);
+      setTotal(usersRes.data?.total || 0);
+      setPages(usersRes.data?.pages || 1);
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Unable to load users');
     } finally {
@@ -105,14 +121,11 @@ const Users = () => {
   }
   setCreating(true);
   try {
-    const res = await userService.createUser(createForm);
-    const { data, message } = res.data;
-    toast.success(message);
-    toast.info(`User ID: ${data.userId} | Email: ${data.email} | Status: Pending Verification`, { autoClose: 8000 });
-    setShowCreateModal(false);
-    setCreateForm(emptyCreateForm);
-    fetchUsers();
-  } catch (error) {
+    const payload = {
+      ...createForm,
+      teamIds: createForm.teamIds ? [createForm.teamIds] : [],
+    };
+    const res = await userService.createUser(payload);
     toast.error(error?.response?.data?.message || 'Unable to create user');
   } finally {
     setCreating(false);
@@ -121,14 +134,29 @@ const Users = () => {
 
   // --- Edit ---
   const openEdit = (user) => {
+    const normalizedTeamValue = Array.isArray(user?.teamIds)
+      ? (user.teamIds[0]?._id || user.teamIds[0])
+      : Array.isArray(user?.teams)
+        ? (user.teams[0]?._id || user.teams[0])
+        : user?.teams || '';
+
     setEditingUser(user);
-    setEditForm({ name: user.name, email: user.email, phone: user.phone, department: user.department });
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      teamIds: normalizedTeamValue || '',
+    });
   };
 
   const handleSaveEdit = async () => {
     setSaving(true);
     try {
-      await userService.updateUser(editingUser._id, editForm);
+      const payload = {
+        ...editForm,
+        teamIds: editForm.teamIds ? [editForm.teamIds] : [],
+      };
+      await userService.updateUser(editingUser._id, payload);
       toast.success('User updated successfully!');
       setEditingUser(null);
       fetchUsers();
@@ -303,7 +331,7 @@ const Users = () => {
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>Email {sortIcon('email')}</span>
                 </th>
                 <th style={{ padding: '14px', textAlign: 'left', color: '#64748b', fontSize: '13px' }}>Role</th>
-                <th style={{ padding: '14px', textAlign: 'left', color: '#64748b', fontSize: '13px' }}>Department</th>
+                <th style={{ padding: '14px', textAlign: 'left', color: '#64748b', fontSize: '13px' }}>Teams</th>
                 <th style={{ padding: '14px', textAlign: 'left', color: '#64748b', fontSize: '13px' }}>Status</th>
                 <th style={{ padding: '14px', textAlign: 'left', color: '#64748b', fontSize: '13px' }}>Actions</th>
               </tr>
@@ -314,24 +342,29 @@ const Users = () => {
               ) : users.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No users found.</td></tr>
               ) : (
-                users.map((u) => (
-                  <tr key={u._id} style={{ borderBottom: '1px solid #e2e8f0', opacity: u.isDeleted ? 0.6 : 1 }}>
-                    <td style={{ padding: '14px', fontWeight: 500, color: '#1e293b' }}>
-                      {u.name}
-                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400 }}>{u.userId}</div>
-                    </td>
-                    <td style={{ padding: '14px', color: '#475569' }}>{u.email}</td>
-                    <td style={{ padding: '14px' }}>
-                      <span style={{
-                        padding: '4px 12px', borderRadius: '20px', fontSize: '12px', textTransform: 'capitalize',
-                        background: u.role === 'admin' ? '#ede9fe' : u.role === 'manager' ? '#dbeafe' : '#f1f5f9',
-                        color: u.role === 'admin' ? '#7c3aed' : u.role === 'manager' ? '#2563eb' : '#64748b'
-                      }}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px', color: '#64748b', textTransform: 'capitalize' }}>{u.department}</td>
-                    <td style={{ padding: '14px' }}>
+                users.map((u) => {
+                  const userTeams = normalizeTeams(u?.teamIds || u?.teams);
+
+                  return (
+                    <tr key={u._id} style={{ borderBottom: '1px solid #e2e8f0', opacity: u.isDeleted ? 0.6 : 1 }}>
+                      <td style={{ padding: '14px', fontWeight: 500, color: '#1e293b' }}>
+                        {u.name}
+                        <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400 }}>{u.userId}</div>
+                      </td>
+                      <td style={{ padding: '14px', color: '#475569' }}>{u.email}</td>
+                      <td style={{ padding: '14px' }}>
+                        <span style={{
+                          padding: '4px 12px', borderRadius: '20px', fontSize: '12px', textTransform: 'capitalize',
+                          background: u.role === 'admin' ? '#ede9fe' : u.role === 'manager' ? '#dbeafe' : '#f1f5f9',
+                          color: u.role === 'admin' ? '#7c3aed' : u.role === 'manager' ? '#2563eb' : '#64748b'
+                        }}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px', color: '#64748b', textTransform: 'capitalize' }}>
+                        {userTeams.length ? userTeams.join(', ') : 'No team'}
+                      </td>
+                      <td style={{ padding: '14px' }}>
                       {u.isDeleted ? (
                         <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', background: '#f1f5f9', color: '#64748b' }}>Deleted</span>
                       ) : u.status === 'PENDING_VERIFICATION' ? (
@@ -346,33 +379,34 @@ const Users = () => {
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '14px' }}>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {u.isDeleted ? (
-                          <>
-                            <button onClick={() => handleRestore(u)} title="Restore" style={actionBtn('#dcfce7', '#16a34a')}><FaUndo size={11} /></button>
-                            <button onClick={() => handlePermanentDelete(u)} title="Permanently delete" style={actionBtn('#fee2e2', '#dc2626')}><FaBan size={11} /></button>
-                          </>
-                        ) : (
-                          <>
-                            <button onClick={() => openEdit(u)} title="Edit" style={actionBtn('#dbeafe', '#2563eb')}><FaEdit size={11} /></button>
-                            <button onClick={() => openRoleModal(u)} title="Assign role" style={actionBtn('#ede9fe', '#7c3aed')}><FaUserShield size={11} /></button>
-                            <button onClick={() => openPermModal(u)} title="Assign permissions" style={actionBtn('#fef3c7', '#d97706')}><FaShieldAlt size={11} /></button>
-                            <button onClick={() => setPasswordModalUser(u)} title="Reset password" style={actionBtn('#e0e7ff', '#4f46e5')}><FaKey size={11} /></button>
-                            <button
-                              onClick={() => handleSoftDelete(u)}
-                              disabled={u._id === currentUser?.id}
-                              title={u._id === currentUser?.id ? "Can't delete yourself" : 'Delete'}
-                              style={{ ...actionBtn('#fee2e2', '#dc2626'), opacity: u._id === currentUser?.id ? 0.4 : 1, cursor: u._id === currentUser?.id ? 'not-allowed' : 'pointer' }}
-                            >
-                              <FaTrash size={11} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      <td style={{ padding: '14px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {u.isDeleted ? (
+                            <>
+                              <button onClick={() => handleRestore(u)} title="Restore" style={actionBtn('#dcfce7', '#16a34a')}><FaUndo size={11} /></button>
+                              <button onClick={() => handlePermanentDelete(u)} title="Permanently delete" style={actionBtn('#fee2e2', '#dc2626')}><FaBan size={11} /></button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => openEdit(u)} title="Edit" style={actionBtn('#dbeafe', '#2563eb')}><FaEdit size={11} /></button>
+                              <button onClick={() => openRoleModal(u)} title="Assign role" style={actionBtn('#ede9fe', '#7c3aed')}><FaUserShield size={11} /></button>
+                              <button onClick={() => openPermModal(u)} title="Assign permissions" style={actionBtn('#fef3c7', '#d97706')}><FaShieldAlt size={11} /></button>
+                              <button onClick={() => setPasswordModalUser(u)} title="Reset password" style={actionBtn('#e0e7ff', '#4f46e5')}><FaKey size={11} /></button>
+                              <button
+                                onClick={() => handleSoftDelete(u)}
+                                disabled={u._id === currentUser?.id}
+                                title={u._id === currentUser?.id ? "Can't delete yourself" : 'Delete'}
+                                style={{ ...actionBtn('#fee2e2', '#dc2626'), opacity: u._id === currentUser?.id ? 0.4 : 1, cursor: u._id === currentUser?.id ? 'not-allowed' : 'pointer' }}
+                              >
+                                <FaTrash size={11} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -418,9 +452,12 @@ const Users = () => {
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Department</label>
-                  <select value={createForm.department} onChange={(e) => setCreateForm({ ...createForm, department: e.target.value })} style={inputStyle}>
-                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  <label style={labelStyle}>Team</label>
+                  <select value={createForm.teamIds} onChange={(e) => setCreateForm({ ...createForm, teamIds: e.target.value })} style={inputStyle}>
+                    <option value="">No team</option>
+                    {availableTeams.map((team) => (
+                      <option key={team._id} value={team._id}>{team.name} ({team.code})</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -452,9 +489,12 @@ const Users = () => {
                 <input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Department</label>
-                <select value={editForm.department} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })} style={inputStyle}>
-                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                <label style={labelStyle}>Team</label>
+                <select value={editForm.teamIds} onChange={(e) => setEditForm({ ...editForm, teamIds: e.target.value })} style={inputStyle}>
+                  <option value="">No team</option>
+                  {availableTeams.map((team) => (
+                    <option key={team._id} value={team._id}>{team.name} ({team.code})</option>
+                  ))}
                 </select>
               </div>
             </div>
