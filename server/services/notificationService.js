@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 const sendWelcomeEmail = async (email, name) => {
   try {
     await transporter.sendMail({
-      from: `"Construction CRM" <${config.smtpUser}>`,
+      from: `"Construction CRM" <himanshu.prpwebs@gmail.com>`,
       to: email,
       subject: 'Welcome to Construction CRM',
       html: `
@@ -34,7 +34,7 @@ const sendResetPasswordEmail = async (email, name, token) => {
   try {
     const resetUrl = `${config.clientUrl}/reset-password/${token}`;
     await transporter.sendMail({
-      from: `"Construction CRM" <${config.smtpUser}>`,
+      from: `"Construction CRM" <himanshu.prpwebs@gmail.com>`,
       to: email,
       subject: 'Password Reset Request',
       html: `
@@ -54,7 +54,7 @@ const sendResetPasswordEmail = async (email, name, token) => {
 const sendOtpEmail = async (email, name, otp, expiryMinutes) => {
   try {
     await transporter.sendMail({
-      from: `"Construction CRM" <${config.smtpUser}>`,
+      from: `"Construction CRM" <himanshu.prpwebs@gmail.com>`,
       to: email,
       subject: 'Your Verification Code',
       html: `
@@ -76,7 +76,7 @@ const sendReminderEmail = async (reminder) => {
   try {
     const client = await reminder.populate('client', 'name company email');
     await transporter.sendMail({
-      from: `"Construction CRM Reminders" <${config.smtpUser}>`,
+      from: `"Construction CRM Reminders" <himanshu.prpwebs@gmail.com>`,
       to: reminder.user.email,
       subject: `Reminder: ${reminder.title}`,
       html: `
@@ -98,7 +98,7 @@ const sendReminderEmail = async (reminder) => {
 const sendUserCreatedOtpEmail = async (email, name, userId, otp, expiryMinutes) => {
   try {
     await transporter.sendMail({
-      from: `"Construction CRM" <${config.smtpUser}>`,
+      from: `"Construction CRM" <himanshu.prpwebs@gmail.com>`,
       to: email,
       subject: 'BuildFlow CRM - Verify Your Account',
       html: `
