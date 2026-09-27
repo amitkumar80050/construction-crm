@@ -4,7 +4,11 @@ const Team = require('../models/Team');
 const TeamChannel = require('../models/TeamChannel');
 const TeamMessage = require('../models/TeamMessage');
 
+let ioInstance = null;
+
 function initSocket(io) {
+  ioInstance = io;
+
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -20,6 +24,11 @@ function initSocket(io) {
   });
 
   io.on('connection', (socket) => {
+    // Automatically join private user notification room
+    if (socket.user?._id) {
+      socket.join(`user:${socket.user._id}`);
+    }
+
     socket.on('team:join', async (teamId) => {
       // Verify membership server-side — never trust the client's teamId alone
       const isMember = socket.user.role === 'admin' || socket.user.teamIds?.some((id) => String(id) === String(teamId));
@@ -55,4 +64,8 @@ function initSocket(io) {
   });
 }
 
+const getIO = () => ioInstance;
+
 module.exports = initSocket;
+module.exports.initSocket = initSocket;
+module.exports.getIO = getIO;

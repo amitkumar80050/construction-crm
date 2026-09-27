@@ -2,15 +2,19 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
+import { useSocket } from '../../hooks/useSocket';
+import inAppNotificationService from '../../services/inAppNotificationService';
+import { toast } from 'react-toastify';
 import {
   FaBell, FaMoon, FaSun, FaSignOutAlt, FaUserCircle, FaCog,
-  FaInfoCircle, FaTimes, FaExclamationTriangle, FaClock, FaChevronDown
+  FaInfoCircle, FaTimes, FaClock, FaChevronDown, FaCheckDouble,
+  FaMapMarkerAlt, FaUserCheck, FaLayerGroup, FaCalendarCheck, FaInfo
 } from 'react-icons/fa';
-import reminderService from '../../services/reminderService';
 
 const Header = () => {
   const { user, logout } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
+  const socketRef = useSocket();
   const navigate = useNavigate();
 
   const [notifOpen, setNotifOpen] = useState(false);
@@ -18,6 +22,7 @@ const Header = () => {
   const [aboutOpen, setAboutOpen] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(true);
 
   const notifRef = useRef(null);
@@ -33,10 +38,11 @@ const Header = () => {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await reminderService.getReminders({ status: 'pending', limit: 8 });
-      const list = res.data?.data || [];
-      const sorted = [...list].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-      setNotifications(sorted);
+      const res = await inAppNotificationService.getMyNotifications({ limit: 15 });
+      if (res.success) {
+        setNotifications(res.data || []);
+        setUnreadCount(res.unreadCount || 0);
+      }
     } catch (error) {
       setNotifications([]);
     } finally {
@@ -46,9 +52,27 @@ const Header = () => {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000); // refresh every minute
+    const interval = setInterval(fetchNotifications, 45000); // refresh periodically
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Real-time socket listener for notifications
+  useEffect(() => {
+    const socket = socketRef?.current;
+    if (!socket) return;
+
+    const handleNewNotification = (newNotif) => {
+      setNotifications((prev) => [newNotif, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+      toast.info(`🔔 ${newNotif.title}: ${newNotif.message}`);
+    };
+
+    socket.on('notification:new', handleNewNotification);
+
+    return () => {
+      socket.off('notification:new', handleNewNotification);
+    };
+  }, [socketRef]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -60,8 +84,52 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const isOverdue = (dueDate) => new Date(dueDate) < new Date();
-  const overdueCount = notifications.filter((n) => isOverdue(n.dueDate)).length;
+  const handleNotificationClick = async (notif) => {
+    setNotifOpen(false);
+    if (!notif.isRead) {
+      try {
+        await inAppNotificationService.markAsRead(notif._id);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (notif.link) {
+      navigate(notif.link);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await inAppNotificationService.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      toast.success('All notifications marked as read');
+    } catch (err) {
+      toast.error('Failed to mark notifications as read');
+    }
+  };
+
+  const getNotifIcon = (type) => {
+    switch (type) {
+      case 'site_visit_assigned':
+      case 'site_visit_completed':
+      case 'site_visit_notdone':
+        return <FaMapMarkerAlt className="text-primary mt-1 flex-shrink-0" size={13} />;
+      case 'attendance_approved':
+        return <FaCalendarCheck className="text-success mt-1 flex-shrink-0" size={13} />;
+      case 'attendance_rejected':
+      case 'attendance_pending':
+        return <FaUserCheck className="text-warning mt-1 flex-shrink-0" size={13} />;
+      case 'lead_assigned':
+        return <FaLayerGroup className="text-info mt-1 flex-shrink-0" size={13} />;
+      default:
+        return <FaInfo className="text-secondary mt-1 flex-shrink-0" size={13} />;
+    }
+  };
 
   const handleLogout = () => {
     setProfileOpen(false);
@@ -77,7 +145,6 @@ const Header = () => {
         </Link>
 
         <div className="d-flex align-items-center gap-2">
-          {/* <button>About us</button> */}
           <button
             type="button"
             className="btn btn-outline-secondary btn-sm"
@@ -96,7 +163,7 @@ const Header = () => {
             {darkMode ? <FaSun /> : <FaMoon />}
           </button>
 
-          {/* Notifications */}
+          {/* Notifications Dropdown */}
           <div className="position-relative" ref={notifRef}>
             <button
               type="button"
@@ -105,11 +172,12 @@ const Header = () => {
               title="Notifications"
             >
               <FaBell />
-              {notifications.length > 0 && (
+              {unreadCount > 0 && (
                 <span
-                  className={`position-absolute top-0 start-100 translate-middle badge rounded-pill ${overdueCount > 0 ? 'bg-danger' : 'bg-primary'}`}
+                  className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                  style={{ fontSize: '10px' }}
                 >
-                  {notifications.length}
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
@@ -117,41 +185,66 @@ const Header = () => {
             {notifOpen && (
               <div
                 className="position-absolute end-0 mt-2 bg-white shadow rounded-3 border"
-                style={{ width: '320px', zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}
+                style={{ width: '340px', zIndex: 1050, maxHeight: '420px', overflowY: 'auto' }}
               >
-                <div className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                  <strong style={{ fontSize: '14px' }}>Notifications</strong>
-                  <button className="btn btn-sm btn-link p-0 text-muted" onClick={() => setNotifOpen(false)}>
-                    <FaTimes size={12} />
-                  </button>
+                <div className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom bg-light">
+                  <div className="d-flex align-items-center gap-2">
+                    <strong style={{ fontSize: '13px' }}>Notifications</strong>
+                    {unreadCount > 0 && (
+                      <span className="badge bg-primary rounded-pill" style={{ fontSize: '10px' }}>
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button
+                        className="btn btn-link btn-sm p-0 text-decoration-none text-muted small d-flex align-items-center gap-1"
+                        onClick={handleMarkAllAsRead}
+                        title="Mark all as read"
+                      >
+                        <FaCheckDouble size={11} /> Mark read
+                      </button>
+                    )}
+                    <button className="btn btn-sm btn-link p-0 text-muted" onClick={() => setNotifOpen(false)}>
+                      <FaTimes size={12} />
+                    </button>
+                  </div>
                 </div>
 
                 {notifLoading ? (
-                  <div className="text-center text-muted py-4" style={{ fontSize: '13px' }}>Loading...</div>
+                  <div className="text-center text-muted py-4 small">Loading notifications...</div>
                 ) : notifications.length === 0 ? (
-                  <div className="text-center text-muted py-4" style={{ fontSize: '13px' }}>
+                  <div className="text-center text-muted py-4 small">
                     You're all caught up! 🎉
                   </div>
                 ) : (
                   notifications.map((n) => (
                     <div
                       key={n._id}
-                      onClick={() => { setNotifOpen(false); navigate('/reminders'); }}
-                      className="px-3 py-2 border-bottom"
+                      onClick={() => handleNotificationClick(n)}
+                      className={`px-3 py-2 border-bottom ${!n.isRead ? 'bg-primary-subtle bg-opacity-25' : ''}`}
                       style={{ cursor: 'pointer', fontSize: '13px' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = !n.isRead ? 'rgba(37,99,235,0.06)' : 'white')
+                      }
                     >
                       <div className="d-flex align-items-start gap-2">
-                        {isOverdue(n.dueDate) ? (
-                          <FaExclamationTriangle size={12} color="#ef4444" style={{ marginTop: '3px', flexShrink: 0 }} />
-                        ) : (
-                          <FaClock size={12} color="#2563eb" style={{ marginTop: '3px', flexShrink: 0 }} />
-                        )}
-                        <div>
-                          <div style={{ fontWeight: 500, color: '#1e293b' }}>{n.title}</div>
-                          <div style={{ color: '#94a3b8', fontSize: '12px' }}>
-                            {n.client?.name || 'Unknown client'} · {new Date(n.dueDate).toLocaleDateString()}
+                        {getNotifIcon(n.type)}
+                        <div className="flex-fill">
+                          <div className={`d-flex justify-content-between align-items-baseline ${!n.isRead ? 'fw-bold text-dark' : 'text-secondary'}`}>
+                            <span>{n.title}</span>
+                            {!n.isRead && (
+                              <span className="badge bg-primary rounded-circle p-1" style={{ width: 6, height: 6 }} />
+                            )}
+                          </div>
+                          <div className="text-muted small mt-1" style={{ fontSize: '12px', lineHeight: 1.3 }}>
+                            {n.message}
+                          </div>
+                          <div className="text-muted mt-1" style={{ fontSize: '10px' }}>
+                            <FaClock size={9} className="me-1" />
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(n.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
@@ -159,21 +252,20 @@ const Header = () => {
                   ))
                 )}
 
-                <div className="text-center border-top py-2">
+                <div className="text-center border-top py-2 bg-light">
                   <Link
                     to="/reminders"
                     onClick={() => setNotifOpen(false)}
-                    className="text-decoration-none"
-                    style={{ fontSize: '13px' }}
+                    className="text-decoration-none small"
                   >
-                    View all reminders →
+                    View Scheduled Reminders →
                   </Link>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Profile dropdown */}
+          {/* Profile Dropdown */}
           <div className="position-relative" ref={profileRef}>
             <button
               type="button"
@@ -205,6 +297,13 @@ const Header = () => {
                   style={{ color: '#1e293b', fontSize: '14px' }}
                 >
                   <FaUserCircle size={14} /> My Profile
+                </button>
+                <button
+                  onClick={() => { setProfileOpen(false); navigate('/attendance'); }}
+                  className="btn btn-link text-decoration-none w-100 text-start d-flex align-items-center gap-2 px-3 py-2"
+                  style={{ color: '#1e293b', fontSize: '14px' }}
+                >
+                  <FaCalendarCheck size={14} /> My Attendance
                 </button>
                 <button
                   onClick={() => { setProfileOpen(false); navigate('/settings'); }}

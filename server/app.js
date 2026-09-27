@@ -21,6 +21,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(passport.initialize());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.set('etag', false);
 app.use('/api/import', importRoutes);
 app.use('/api', activityLogRoutes);
@@ -58,6 +59,10 @@ mountRoute('/api/dev', './routes/seedRoutes');
 mountRoute('/api/import', './routes/importRoutes');
 mountRoute('/api/export', './routes/exportRoutes');
 mountRoute('/api/settings', './routes/settingsRoutes');
+mountRoute('/api/attendance', './routes/attendanceRoutes');
+mountRoute('/api/site-visits', './routes/siteVisitRoutes');
+mountRoute('/api/manager', './routes/managerDashboardRoutes');
+mountRoute('/api/notifications', './routes/notificationRoutes');
 
 // 404 handler — must come AFTER all real routes are mounted
 app.use((req, res) => {

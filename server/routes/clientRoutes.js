@@ -9,11 +9,13 @@ const {
   deleteClient,
   getClientStats,
 } = require('../controllers/clientController');
+const { distributeLeads } = require('../controllers/leadDistributionController');
 
 router.route('/')
   .get(protect, getClients)
   .post(protect, createClient);
 
+router.post('/distribute', protect, distributeLeads);
 router.get('/stats', protect, getClientStats);
 
 router.route('/:id')

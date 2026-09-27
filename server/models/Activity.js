@@ -23,7 +23,7 @@ const activitySchema = new mongoose.Schema({
   },
   module: {
     type: String,
-    enum: ['auth', 'client', 'remark', 'stage', 'reminder', 'user', 'analytics'],
+    enum: ['auth', 'client', 'remark', 'stage', 'reminder', 'user', 'analytics', 'attendance', 'site_visit', 'notification', 'team', 'lead'],
     required: true,
   },
   description: {

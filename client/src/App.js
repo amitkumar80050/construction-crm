@@ -35,6 +35,10 @@ import TeamManagement from './pages/admin/TeamManagement';
 import TeamChat from './pages/TeamChat';
 import WhatsApp from './pages/WhatsApp';
 import MyTeam from './pages/MyTeam';
+import Attendance from './pages/Attendance';
+import AttendanceApproval from './pages/manager/AttendanceApproval';
+import SiteVisits from './pages/SiteVisits';
+import ManagerDashboard from './pages/manager/ManagerDashboard';
 
 
 
@@ -73,7 +77,11 @@ function AppContent() {
             <Route path="/remarks" element={<Remarks />} />
             <Route path="/stages" element={<Stages />} />
             <Route path="/reminders" element={<Reminders />} />
-            {/* <Route path="/calling" element={<CallingPanel />} /> */}
+            <Route path="/calling" element={<CallingPanel />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/site-visits" element={<SiteVisits />} />
+            <Route path="/manager/dashboard" element={<ManagerDashboard />} />
+            <Route path="/manager/attendance" element={<AttendanceApproval />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/whatsapp" element={<WhatsApp />} />
             <Route path="/my-team" element={<MyTeam />} />

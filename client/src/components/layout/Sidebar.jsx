@@ -4,31 +4,40 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   FaHome, FaUsers, FaComment, FaLayerGroup, FaBell,
   FaChartBar, FaUserCog, FaCog, FaFileImport, FaFileExport,
-  FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends
+  FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends,
+  FaCalendarCheck, FaCompass, FaPhoneAlt, FaUserCheck, FaTachometerAlt
 } from 'react-icons/fa';
 import './Sidebar.css';
 
 const Sidebar = ({ pinned, onTogglePin }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isManagerOrAdmin = user?.role === 'admin' || user?.role === 'manager';
 
   const navItems = [
     { path: '/dashboard', icon: FaHome, label: 'Dashboard' },
     { path: '/clients', icon: FaUsers, label: 'Leads' },
+    { path: '/calling', icon: FaPhoneAlt, label: 'Calling Panel' },
+    { path: '/site-visits', icon: FaCompass, label: 'Site Visits' },
+    { path: '/attendance', icon: FaCalendarCheck, label: 'Attendance' },
     { path: '/remarks', icon: FaComment, label: 'Remarks' },
     { path: '/stages', icon: FaLayerGroup, label: 'Stages' },
     { path: '/reminders', icon: FaBell, label: 'Reminders' },
     { path: '/analytics', icon: FaChartBar, label: 'Analytics' },
     { path: '/whatsapp', icon: FaWhatsapp, label: 'WhatsApp' },
     { path: '/my-team', icon: FaUserFriends, label: 'My Team' },
-    { path: '/logs', icon: FaHistory, label : 'My Logs' },
+    { path: '/logs', icon: FaHistory, label: 'My Logs' },
+  ];
+
+  const managerItems = [
+    { path: '/manager/dashboard', icon: FaTachometerAlt, label: 'Team Dashboard' },
+    { path: '/manager/attendance', icon: FaUserCheck, label: 'Attendance Approvals' },
   ];
 
   const adminItems = [
     { path: '/users', icon: FaUserCog, label: 'Users' },
     { path: '/import', icon: FaFileImport, label: 'Import' },
     { path: '/export', icon: FaFileExport, label: 'Export' },
-    
   ];
 
   return (
@@ -60,6 +69,24 @@ const Sidebar = ({ pinned, onTogglePin }) => {
             <span className="nav-label">{item.label}</span>
           </NavLink>
         ))}
+
+        {isManagerOrAdmin && (
+          <>
+            <div className="sidebar-divider">
+              <span className="nav-label">Management</span>
+            </div>
+            {managerItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              >
+                <item.icon className="nav-icon" />
+                <span className="nav-label">{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
 
         {isAdmin && (
           <>

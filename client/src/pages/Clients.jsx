@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaPlus, FaSearch, FaEye, FaStickyNote, FaRegClock, FaLayerGroup, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEye, FaStickyNote, FaRegClock, FaLayerGroup, FaEdit, FaTrash, FaRandom } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { useAuth } from '../hooks/useAuth';
 import clientService from '../services/clientService';
 import LatestRemark from '../components/remarks/LatestRemark';
 import CurrentStage from '../components/stages/CurrentStage';
@@ -9,7 +10,11 @@ import UpcomingReminder from '../components/reminders/UpcomingReminder';
 import QuickLeadUpload from '../components/clients/QuickLeadUpload';
 
 const Clients = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [distributeModalOpen, setDistributeModalOpen] = useState(false);
+  const [targetRole, setTargetRole] = useState('telecaller');
+  const [distributing, setDistributing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [clients, setClients] = useState([]);
@@ -47,6 +52,23 @@ const Clients = () => {
     } catch (error) {
       const message = error?.response?.data?.message || 'Unable to delete client';
       toast.error(message);
+    }
+  };
+
+  const handleDistributeSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setDistributing(true);
+      const res = await clientService.distributeLeads({
+        roleFilter: targetRole,
+      });
+      toast.success(res.message || 'Leads successfully distributed round-robin!');
+      setDistributeModalOpen(false);
+      fetchClients();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to distribute leads');
+    } finally {
+      setDistributing(false);
     }
   };
 
@@ -101,6 +123,26 @@ const Clients = () => {
           >
             Advanced Import
           </Link>
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <button
+              onClick={() => setDistributeModalOpen(true)}
+              style={{
+                padding: '10px 16px',
+                background: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: 500,
+              }}
+            >
+              <FaRandom /> Distribute Leads
+            </button>
+          )}
           <Link
             to="/clients/new"
             style={{
@@ -300,6 +342,85 @@ const Clients = () => {
           </table>
         </div>
       </div>
+
+      {/* Round-Robin Lead Distribution Modal */}
+      {distributeModalOpen && (
+        <div
+          onClick={() => setDistributeModalOpen(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white', borderRadius: '12px', width: '100%',
+              maxWidth: '480px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+            }}
+          >
+            <h3 style={{ margin: '0 0 8px', fontSize: '18px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaRandom color="#059669" /> Auto-Distribute Leads (Round-Robin)
+            </h3>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px', lineHeight: 1.5 }}>
+              Distribute unassigned leads equally across your active team members in a fair, automated round-robin sequence.
+            </p>
+
+            <form onSubmit={handleDistributeSubmit}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Target Team Role
+                </label>
+                <select
+                  value={targetRole}
+                  onChange={(e) => setTargetRole(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px', borderRadius: '8px',
+                    border: '1px solid #cbd5e1', fontSize: '14px'
+                  }}
+                >
+                  <option value="telecaller">Telecallers (Calling & Qualification)</option>
+                  <option value="sales executer">Sales Executives (Site Visits & Closing)</option>
+                </select>
+              </div>
+
+              <div style={{
+                background: '#f0fdf4', border: '1px solid #bbf7d0',
+                padding: '12px', borderRadius: '8px', marginBottom: '20px',
+                fontSize: '12px', color: '#166534'
+              }}>
+                ℹ️ Each active team member with the selected role will receive an equal batch of unassigned leads.
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setDistributeModalOpen(false)}
+                  disabled={distributing}
+                  style={{
+                    padding: '8px 16px', background: '#f1f5f9', border: 'none',
+                    borderRadius: '8px', cursor: 'pointer', fontSize: '13px'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={distributing}
+                  style={{
+                    padding: '8px 20px', background: '#059669', color: 'white',
+                    border: 'none', borderRadius: '8px', cursor: distributing ? 'not-allowed' : 'pointer',
+                    fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <FaRandom /> {distributing ? 'Distributing...' : 'Run Round-Robin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
