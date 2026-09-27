@@ -21,8 +21,9 @@ const stageService = {
     return await api.delete(`/stages/${id}`);
   },
 
-  updateClientStage: async (clientId, stageId) => {
-    return await api.put(`/stages/client/${clientId}`, { stageId });
+  updateClientStage: async (clientId, stagePayload) => {
+    const body = typeof stagePayload === 'string' ? { stageId: stagePayload } : stagePayload;
+    return await api.put(`/stages/client/${clientId}`, body);
   },
 
   getClientStageHistory: async (clientId) => {

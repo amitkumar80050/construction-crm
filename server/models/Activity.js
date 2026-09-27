@@ -21,7 +21,7 @@ const activitySchema = new mongoose.Schema({
   },
   module: {
     type: String,
-    enum: ['auth', 'client', 'leads', 'remark', 'stage', 'reminder', 'user', 'analytics', 'attendance', 'site_visit', 'team', 'settings', 'import', 'export', 'whatsapp', 'seed'],
+  enum: ['auth', 'client', 'leads', 'lead', 'remark', 'stage', 'reminder', 'user', 'analytics', 'attendance', 'site_visit', 'notification', 'team', 'settings', 'import', 'export', 'whatsapp', 'seed'],
     required: true,
   },
   description: {

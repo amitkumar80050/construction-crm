@@ -36,13 +36,12 @@ import TeamChat from './pages/TeamChat';
 import WhatsApp from './pages/WhatsApp';
 import MyTeam from './pages/MyTeam';
 import ManagerDashboard from './pages/manager/ManagerDashboard';
-import TelecallerDashboard from './pages/TelecallerDashboard';
-import SalesExecutiveDashboard from './pages/SalesExecutiveDashboard';
 import ManagerLeads from './pages/manager/ManagerLeads';
 import ManagerTeam from './pages/manager/ManagerTeam';
-import MarkAttendance from './pages/MarkAttendance';
-import AttendanceApprovals from './pages/manager/AttendanceApprovals';
-
+import Attendance from './pages/Attendance';
+import AttendanceApproval from './pages/manager/AttendanceApproval';
+import TelecallerDashboard from './pages/TelecallerDashboard';
+import SalesExecutiveDashboard from './pages/SalesExecutiveDashboard';
 
 
 
@@ -72,21 +71,19 @@ function AppContent() {
           <Route path="/verify-user" element={<VerifyUser />} />
         </Route>
 
-        <Route path="/my-visits" element={<MyVisits />} />
-        <Route path="/visits/:id" element={<VisitDetail />} />
-
-
         {/* Protected Routes */}
         <Route element={<PrivateRoute />}>
           <Route element={user?.role === 'admin' ? <AdminLayout /> : <UserLayout />}>
             <Route path="/dashboard" element={user?.role === 'auditor' ? <MyLogs /> : user?.role === 'manager' ? <ManagerDashboard /> : user?.role === 'telecaller' ? <TelecallerDashboard /> : user?.role === 'sales executer' ? <SalesExecutiveDashboard /> : <Dashboard />} />
-            <Route path="/site-visits" element={user?.role === 'sales executer' ? <SalesExecutiveDashboard /> : <Navigate to="/dashboard" />} />
+            <Route path="/site-visits" element={user?.role === 'sales executer' ? <SalesExecutiveDashboard /> : user?.role === 'manager' || user?.role === 'admin' ? <ManagerDashboard /> : <Navigate to="/dashboard" />} />
+            <Route path="/my-visits" element={user?.role === 'sales executer' ? <MyVisits /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/visits/:id" element={user?.role === 'sales executer' ? <VisitDetail /> : <Navigate to="/dashboard" replace />} />
             <Route path="/manager-dashboard" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerDashboard /> : <Navigate to="/dashboard" />} />
             <Route path="/manager/team" element={user?.role === 'manager' ? <ManagerTeam /> : <Navigate to="/dashboard" replace />} />
             <Route path="/manager/leads" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerLeads /> : <Navigate to="/dashboard" replace />} />
             <Route path="/import" element={['admin', 'manager', 'telecaller'].includes(user?.role) ? <ImportData /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/attendance" element={<MarkAttendance />} />
-            <Route path="/manager/attendance" element={user?.role === 'manager' || user?.role === 'admin' ? <AttendanceApprovals /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/manager/attendance" element={user?.role === 'manager' || user?.role === 'admin' ? <AttendanceApproval /> : <Navigate to="/dashboard" replace />} />
             <Route path="/clients" element={<Clients />} />
             <Route path="/clients/:id" element={<ClientProfile />} />
             <Route path="/clients/:id/edit" element={<EditClient />} />
@@ -94,7 +91,8 @@ function AppContent() {
             <Route path="/remarks" element={<Remarks />} />
             <Route path="/stages" element={<Stages />} />
             <Route path="/reminders" element={<Reminders />} />
-            {/* <Route path="/calling" element={<CallingPanel />} /> */}
+            <Route path="/calling" element={<CallingPanel />} />
+            <Route path="/manager/dashboard" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerDashboard /> : <Navigate to="/dashboard" replace />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/whatsapp" element={<WhatsApp />} />
             <Route path="/my-team" element={<MyTeam />} />

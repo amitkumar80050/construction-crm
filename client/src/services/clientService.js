@@ -25,6 +25,11 @@ const clientService = {
     const response = await api.get('/clients/stats');
     return response.data;
   },
+
+  distributeLeads: async (data) => {
+    const response = await api.post('/clients/distribute', data);
+    return response.data;
+  },
 };
 
 export default clientService;

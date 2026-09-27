@@ -6,6 +6,10 @@ const managerService = {
   assignVisit: (data) => api.post('/manager/assign-visit', data),
   getAttendance: (params) => api.get('/manager/attendance', { params }),
   updateAttendance: (id, data) => api.put(`/manager/attendance/${id}`, data),
+  getManagerDashboard: async () => {
+    const res = await api.get('/manager/dashboard');
+    return res.data;
+  },
 };
 
 export default managerService;

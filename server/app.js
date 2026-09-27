@@ -14,6 +14,7 @@ const leadRoutes = require('./routes/leadRoutes');
 const managerRoutes = require('./routes/managerRoutes');
 const siteVisitRoutes = require('./routes/siteVisitRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 
 // ...
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(passport.initialize());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.set('etag', false);
 
 app.use('/api/import', importRoutes);
@@ -39,7 +41,7 @@ app.use('/api/leads', leadRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/site-visits', siteVisitRoutes);
 app.use('/api/attendance', attendanceRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/notifications', notificationRoutes);
 
 
 app.get('/api/health', (req, res) => {
@@ -72,12 +74,6 @@ mountRoute('/api/dev', './routes/seedRoutes');
 mountRoute('/api/import', './routes/importRoutes');
 mountRoute('/api/export', './routes/exportRoutes');
 mountRoute('/api/settings', './routes/settingsRoutes');
-mountRoute('/api/notifications', './routes/notificationRoutes');
-mountRoute('/api/auth', './routes/authScopedRoutes');
-mountRoute('/api/leads', './routes/leadRoutes');
-mountRoute('/api/manager', './routes/managerRoutes');
-mountRoute('/api/site-visits', './routes/siteVisitRoutes');
-
 
 // 404 handler — must come AFTER all real routes are mounted
 app.use((req, res) => {

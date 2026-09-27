@@ -29,3 +29,9 @@ coverage/
 
 # WhatsApp browser session data
 .wwebjs_auth/
+.wwebjs_cache/
+
+# Uploads
+uploads/
+server/uploads/
+!server/uploads/.gitkeep

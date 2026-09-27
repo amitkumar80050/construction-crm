@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/visitUploadMiddleware');
-const ctrl = require('../controllers/siteVisitController');
+const ctrl = require('../controllers/siteVisitController.js.js');
 
 router.get('/my', protect, ctrl.getMyVisits);
 router.get('/:id', protect, ctrl.getVisit);

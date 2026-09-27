@@ -4,55 +4,35 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   FaHome, FaUsers, FaComment, FaLayerGroup, FaBell,
   FaChartBar, FaUserCog, FaCog, FaFileImport, FaFileExport,
-  FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends, FaMapMarkerAlt, FaClipboardCheck,
-  FaComments
+  FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends
 } from 'react-icons/fa';
 import './Sidebar.css';
 
 const Sidebar = ({ pinned, onTogglePin }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const isManager = user?.role === 'manager';
-  const isTelecaller = user?.role === 'telecaller';
-  const isSalesExecutive = user?.role === 'sales executer';
-  const isAuditor = user?.role === 'auditor';
 
   const navItems = isAuditor ? [
     { path: '/logs', icon: FaHistory, label: 'Activity Logs' },
   ] : [
     { path: '/dashboard', icon: FaHome, label: 'Dashboard' },
     { path: '/clients', icon: FaUsers, label: 'Leads' },
+    { path: '/calling', icon: FaPhoneAlt, label: 'Calling Panel' },
+    { path: '/site-visits', icon: FaCompass, label: 'Site Visits' },
+    { path: '/attendance', icon: FaCalendarCheck, label: 'Attendance' },
     { path: '/remarks', icon: FaComment, label: 'Remarks' },
     { path: '/stages', icon: FaLayerGroup, label: 'Stages' },
     { path: '/reminders', icon: FaBell, label: 'Reminders' },
     { path: '/analytics', icon: FaChartBar, label: 'Analytics' },
     { path: '/whatsapp', icon: FaWhatsapp, label: 'WhatsApp' },
     { path: '/my-team', icon: FaUserFriends, label: 'My Team' },
-    { path: '/my-team', icon: FaComments, label: 'Team Chat', badge: 3 },
-    { path: '/logs', icon: FaHistory, label: isAdmin ? 'Activity Logs' : 'My Logs' },
-    { path: '/attendance', icon: FaClipboardCheck, label: 'Attendance' },
-  ];
-
-  const managerItems = [
-    { path: '/manager-dashboard', icon: FaChartBar, label: 'Manager dashboard' },
-    { path: '/manager/team', icon: FaUsers, label: 'Team members' },
-    { path: '/manager/attendance', icon: FaClipboardCheck, label: 'Attendance approvals' },
-  ];
-
-  const telecallerItems = [
-    { path: '/dashboard', icon: FaUsers, label: 'My lead queue' },
-  ];
-
-  const salesExecutiveItems = [
-    { path: '/site-visits', icon: FaMapMarkerAlt, label: 'My site visits' },
+    { path: '/logs', icon: FaHistory, label : 'My Logs' },
   ];
 
   const adminItems = [
     { path: '/users', icon: FaUserCog, label: 'Users' },
     { path: '/import', icon: FaFileImport, label: 'Import' },
     { path: '/export', icon: FaFileExport, label: 'Export' },
-    { path: '/manager-dashboard', icon: FaChartBar, label: 'Team dashboard' },
-    { path: '/manager/attendance', icon: FaClipboardCheck, label: 'Attendance approvals' },
     
   ];
 
@@ -127,6 +107,24 @@ const Sidebar = ({ pinned, onTogglePin }) => {
             <item.icon className="nav-icon" /><span className="nav-label">{item.label}</span>
           </NavLink>
         ))}
+
+        {isManagerOrAdmin && (
+          <>
+            <div className="sidebar-divider">
+              <span className="nav-label">Management</span>
+            </div>
+            {managerItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              >
+                <item.icon className="nav-icon" />
+                <span className="nav-label">{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
 
         {isAdmin && (
           <>

@@ -5,8 +5,11 @@ const TeamChannel = require('../models/TeamChannel');
 const TeamMessage = require('../models/TeamMessage');
 const { setSocketServer } = require('../services/inAppNotificationService');
 
+let ioInstance = null;
+
 function initSocket(io) {
   setSocketServer(io);
+  ioInstance = io;
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -59,4 +62,8 @@ function initSocket(io) {
   });
 }
 
+const getIO = () => ioInstance;
+
 module.exports = initSocket;
+module.exports.initSocket = initSocket;
+module.exports.getIO = getIO;

@@ -8,6 +8,7 @@ router.post('/checkin', ctrl.checkIn);
 router.post('/checkout', ctrl.checkOut);
 router.get('/my', ctrl.getMyAttendance);
 router.get('/pending', manager, ctrl.getPendingForTeam);
+router.get('/team', manager, ctrl.getTeamAttendance);
 router.put('/:id/approve', manager, ctrl.approveAttendance);
 router.put('/:id/reject', manager, ctrl.rejectAttendance);
 
