@@ -4,21 +4,27 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   FaHome, FaUsers, FaComment, FaLayerGroup, FaBell,
   FaChartBar, FaUserCog, FaCog, FaFileImport, FaFileExport,
-  FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends
+  FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends,
+  FaPhoneAlt, FaCompass, FaCalendarCheck, FaUserCheck, FaTachometerAlt, FaMapMarkerAlt, FaComments
 } from 'react-icons/fa';
 import './Sidebar.css';
 
 const Sidebar = ({ pinned, onTogglePin }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
+  const isTelecaller = user?.role === 'telecaller';
+  const isSalesExecutive = user?.role === 'sales executer';
+  const isAuditor = user?.role === 'auditor';
+  const isManagerOrAdmin = isAdmin || isManager;
 
   const navItems = isAuditor ? [
     { path: '/logs', icon: FaHistory, label: 'Activity Logs' },
   ] : [
     { path: '/dashboard', icon: FaHome, label: 'Dashboard' },
     { path: '/clients', icon: FaUsers, label: 'Leads' },
-    { path: '/calling', icon: FaPhoneAlt, label: 'Calling Panel' },
-    { path: '/site-visits', icon: FaCompass, label: 'Site Visits' },
+    ...(isTelecaller || isManagerOrAdmin ? [{ path: '/calling', icon: FaPhoneAlt, label: 'Calling Panel' }] : []),
+    ...(isSalesExecutive || isManagerOrAdmin ? [{ path: '/site-visits', icon: FaCompass, label: isSalesExecutive ? 'My Site Visits' : 'Site Visits' }] : []),
     { path: '/attendance', icon: FaCalendarCheck, label: 'Attendance' },
     { path: '/remarks', icon: FaComment, label: 'Remarks' },
     { path: '/stages', icon: FaLayerGroup, label: 'Stages' },
@@ -26,14 +32,21 @@ const Sidebar = ({ pinned, onTogglePin }) => {
     { path: '/analytics', icon: FaChartBar, label: 'Analytics' },
     { path: '/whatsapp', icon: FaWhatsapp, label: 'WhatsApp' },
     { path: '/my-team', icon: FaUserFriends, label: 'My Team' },
-    { path: '/logs', icon: FaHistory, label : 'My Logs' },
+    { path: '/logs', icon: FaHistory, label: isAdmin ? 'Activity Logs' : 'My Logs' },
+  ];
+
+  const managerItems = [
+    { path: '/manager-dashboard', icon: FaTachometerAlt, label: 'Team Dashboard' },
+    { path: '/manager/leads', icon: FaUsers, label: 'Team Leads' },
+    { path: '/manager/team', icon: FaUserFriends, label: 'Team Members' },
+    { path: '/manager/attendance', icon: FaUserCheck, label: 'Attendance Approvals' },
   ];
 
   const adminItems = [
     { path: '/users', icon: FaUserCog, label: 'Users' },
+    { path: '/teams', icon: FaUserFriends, label: 'Teams' },
     { path: '/import', icon: FaFileImport, label: 'Import' },
     { path: '/export', icon: FaFileExport, label: 'Export' },
-    
   ];
 
   return (
@@ -60,51 +73,9 @@ const Sidebar = ({ pinned, onTogglePin }) => {
             key={item.path}
             to={item.path}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            style={{ position: 'relative' }}
           >
             <item.icon className="nav-icon" />
             <span className="nav-label">{item.label}</span>
-            {item.badge > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  right: 12,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: '#ef4444',
-                  color: '#fff',
-                  borderRadius: 999,
-                  fontSize: 10,
-                  minWidth: 18,
-                  height: 18,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 5px',
-                  lineHeight: 1,
-                }}
-              >
-                {item.badge}
-              </span>
-            )}
-          </NavLink>
-        ))}
-
-        {isManager && managerItems.map((item) => (
-          <NavLink key={item.path} to={item.path} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <item.icon className="nav-icon" /><span className="nav-label">{item.label}</span>
-          </NavLink>
-        ))}
-
-        {isTelecaller && telecallerItems.map((item) => (
-          <NavLink key={item.path} to={item.path} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <item.icon className="nav-icon" /><span className="nav-label">{item.label}</span>
-          </NavLink>
-        ))}
-
-        {isSalesExecutive && salesExecutiveItems.map((item) => (
-          <NavLink key={item.path} to={item.path} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <item.icon className="nav-icon" /><span className="nav-label">{item.label}</span>
           </NavLink>
         ))}
 
@@ -144,10 +115,12 @@ const Sidebar = ({ pinned, onTogglePin }) => {
           </>
         )}
 
-        {!isAuditor && <NavLink to="/settings" className="nav-link">
-          <FaCog className="nav-icon" />
-          <span className="nav-label">Settings</span>
-        </NavLink>}
+        {!isAuditor && (
+          <NavLink to="/settings" className="nav-link">
+            <FaCog className="nav-icon" />
+            <span className="nav-label">Settings</span>
+          </NavLink>
+        )}
       </nav>
     </aside>
   );

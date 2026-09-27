@@ -7,6 +7,7 @@ import {
   FaBell, FaMoon, FaSun, FaSignOutAlt, FaUserCircle, FaCog, FaCalendarCheck,
   FaInfoCircle, FaTimes, FaExclamationTriangle, FaClock, FaChevronDown
 } from 'react-icons/fa';
+import inAppNotificationService from '../../services/inAppNotificationService';
 import reminderService from '../../services/reminderService';
 
 const Header = () => {
@@ -35,10 +36,10 @@ const Header = () => {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await reminderService.getReminders({ status: 'pending', limit: 8 });
-      const list = res.data?.data || [];
-      const sorted = [...list].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-      setNotifications(sorted);
+      const res = await inAppNotificationService.getMyNotifications({ limit: 10 });
+      const list = res.data || [];
+      setNotifications(list);
+      setUnreadCount(res.unreadCount !== undefined ? res.unreadCount : list.filter((n) => !n.isRead).length);
     } catch (error) {
       setNotifications([]);
     } finally {
@@ -46,9 +47,43 @@ const Header = () => {
     }
   }, []);
 
+  const handleMarkAllRead = async () => {
+    try {
+      await inAppNotificationService.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      toast.success('All notifications marked as read');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleNotificationClick = async (n) => {
+    try {
+      if (!n.isRead) {
+        await inAppNotificationService.markAsRead(n._id);
+        setNotifications((prev) => prev.map((item) => (item._id === n._id ? { ...item, isRead: true } : item)));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setNotifOpen(false);
+
+    if (n.type?.includes('site_visit') || n.targetType === 'SiteVisit') {
+      navigate('/site-visits');
+    } else if (n.type?.includes('attendance') || n.targetType === 'Attendance') {
+      navigate(user?.role === 'manager' || user?.role === 'admin' ? '/manager/attendance' : '/attendance');
+    } else if (n.type?.includes('lead') || n.targetType === 'Client') {
+      navigate('/clients');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 45000); // refresh periodically
+    const interval = setInterval(fetchNotifications, 30000); // refresh periodically
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
@@ -107,10 +142,8 @@ const Header = () => {
             >
               <FaBell />
               {unreadCount > 0 && (
-                <span
-                  className={`position-absolute top-0 start-100 translate-middle badge rounded-pill ${overdueCount > 0 ? 'bg-danger' : 'bg-primary'}`}
-                >
-                  {notifications.length}
+                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  {unreadCount}
                 </span>
               )}
             </button>
@@ -118,13 +151,20 @@ const Header = () => {
             {notifOpen && (
               <div
                 className="position-absolute end-0 mt-2 bg-white shadow rounded-3 border"
-                style={{ width: '340px', zIndex: 1050, maxHeight: '420px', overflowY: 'auto' }}
+                style={{ width: '350px', zIndex: 1050, maxHeight: '420px', overflowY: 'auto' }}
               >
                 <div className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                  <strong style={{ fontSize: '14px' }}>Notifications</strong>
-                  <button className="btn btn-sm btn-link p-0 text-muted" onClick={() => setNotifOpen(false)}>
-                    <FaTimes size={12} />
-                  </button>
+                  <strong style={{ fontSize: '14px' }}>Notifications {unreadCount > 0 ? `(${unreadCount})` : ''}</strong>
+                  <div className="d-flex align-items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button className="btn btn-sm btn-link p-0 text-primary small text-decoration-none" onClick={handleMarkAllRead} style={{ fontSize: '11px' }}>
+                        Mark all read
+                      </button>
+                    )}
+                    <button className="btn btn-sm btn-link p-0 text-muted" onClick={() => setNotifOpen(false)}>
+                      <FaTimes size={12} />
+                    </button>
+                  </div>
                 </div>
 
                 {notifLoading ? (
@@ -137,39 +177,30 @@ const Header = () => {
                   notifications.map((n) => (
                     <div
                       key={n._id}
-                      onClick={() => { setNotifOpen(false); navigate('/reminders'); }}
+                      onClick={() => handleNotificationClick(n)}
                       className="px-3 py-2 border-bottom"
-                      style={{ cursor: 'pointer', fontSize: '13px' }}
+                      style={{
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        backgroundColor: n.isRead ? 'transparent' : '#f0f9ff',
+                      }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = n.isRead ? 'white' : '#f0f9ff')}
                     >
                       <div className="d-flex align-items-start gap-2">
-                        {isOverdue(n.dueDate) ? (
-                          <FaExclamationTriangle size={12} color="#ef4444" style={{ marginTop: '3px', flexShrink: 0 }} />
-                        ) : (
-                          <FaClock size={12} color="#2563eb" style={{ marginTop: '3px', flexShrink: 0 }} />
-                        )}
-                        <div>
-                          <div style={{ fontWeight: 500, color: '#1e293b' }}>{n.title}</div>
-                          <div style={{ color: '#94a3b8', fontSize: '12px' }}>
-                            {n.client?.name || 'Unknown client'} · {new Date(n.dueDate).toLocaleDateString()}
+                        <FaClock size={12} color="#2563eb" style={{ marginTop: '3px', flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: n.isRead ? 400 : 600, color: '#1e293b' }}>{n.title}</div>
+                          <div style={{ color: '#64748b', fontSize: '12px' }}>{n.message}</div>
+                          <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
+                        {!n.isRead && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', flexShrink: 0, marginTop: 5 }}></span>}
                       </div>
                     </div>
                   ))
                 )}
-
-                <div className="text-center border-top py-2">
-                  <Link
-                    to="/reminders"
-                    onClick={() => setNotifOpen(false)}
-                    className="text-decoration-none"
-                    style={{ fontSize: '13px' }}
-                  >
-                    View all reminders →
-                  </Link>
-                </div>
               </div>
             )}
           </div>

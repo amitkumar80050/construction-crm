@@ -3,9 +3,18 @@ import api from './api';
 const siteVisitService = {
   getMyVisits: (statusOrParams) => api.get('/site-visits/my', { params: typeof statusOrParams === 'string' ? { status: statusOrParams } : statusOrParams || {} }),
   getVisit: (id) => api.get(`/site-visits/${id}`),
+  complete: (id, formData) => api.post(`/site-visits/${id}/complete`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   completeVisit: (id, formData) => api.post(`/site-visits/${id}/complete`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  markNotDone: (id, data) => api.post(`/site-visits/${id}/not-done`, data),
-  notDone: (id, data) => api.post(`/site-visits/${id}/not-done`, data),
+  markNotDone: (id, data) => api.post(`/site-visits/${id}/not-done`, {
+    notDoneReason: data?.notDoneReason || data?.reason,
+    nextDate: data?.nextDate || data?.nextScheduledAt,
+    notes: data?.notes,
+  }),
+  notDone: (id, data) => api.post(`/site-visits/${id}/not-done`, {
+    notDoneReason: data?.notDoneReason || data?.reason,
+    nextDate: data?.nextDate || data?.nextScheduledAt,
+    notes: data?.notes,
+  }),
   getAllSiteVisits: async (params) => {
     const res = await api.get('/site-visits', { params });
     return res.data;

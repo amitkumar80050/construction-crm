@@ -95,7 +95,8 @@ const markNotDone = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized for this visit' });
     }
 
-    const { notDoneReason, nextDate } = req.body;
+    const notDoneReason = req.body.notDoneReason || req.body.reason;
+    const nextDate = req.body.nextDate || req.body.nextScheduledAt || req.body.rescheduleDate;
     if (!notDoneReason) return res.status(400).json({ success: false, message: 'Reason is required' });
 
     visit.status = 'MISSED';

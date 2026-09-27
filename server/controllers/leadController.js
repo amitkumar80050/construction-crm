@@ -121,7 +121,8 @@ const createLead = async (req, res) => {
 
 const changeStage = async (req, res) => {
   try {
-    const { newStage, notes, followUpDate } = req.body;
+    const newStage = req.body.newStage || req.body.stage;
+    const { notes, followUpDate } = req.body;
     if (req.user.role === 'sales executer' && newStage === 'SITE_VISIT_DONE') {
       return res.status(403).json({ success: false, message: 'Complete the assigned site visit with photo and GPS proof to mark it done.' });
     }
