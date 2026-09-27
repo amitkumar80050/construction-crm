@@ -63,7 +63,8 @@ const Clients = () => {
       const res = await clientService.distributeLeads({
         roleFilter: targetRole,
       });
-      toast.success(res.message || 'Leads successfully distributed round-robin!');
+      if (res.totalDistributed === 0) toast.info(res.message || 'No unassigned leads to distribute.');
+      else toast.success(res.message || 'Leads successfully distributed round-robin!');
       setDistributeModalOpen(false);
       fetchClients();
     } catch (error) {

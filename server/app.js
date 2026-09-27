@@ -23,7 +23,11 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000' }));
+const allowedOrigins = [process.env.CLIENT_URL || 'http://localhost:3000'];
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push('http://localhost:3000', 'http://localhost:5173');
+}
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));

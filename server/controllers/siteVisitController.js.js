@@ -54,13 +54,19 @@ const completeVisit = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Location is required' });
     }
 
-    visit.status = 'DONE';
-    visit.photoUrl = `/uploads/site-visits/${req.file.filename}`;
-    visit.latitude = lat;
-    visit.longitude = lng;
-    visit.notes = notes || '';
-    visit.completedAt = Date.now();
-    await visit.save();
+    const updatedVisit = await SiteVisit.findOneAndUpdate(
+      { _id: visit._id, assignedTo: req.user.id },
+      { $set: {
+        status: 'DONE',
+        photoUrl: `/uploads/site-visits/${req.file.filename}`,
+        latitude: lat,
+        longitude: lng,
+        notes: notes || '',
+        completedAt: Date.now(),
+      } },
+      { new: true, runValidators: true }
+    );
+    if (!updatedVisit) return res.status(403).json({ success: false, message: 'Not authorized for this visit' });
 
     const lead = await Client.findById(visit.lead);
     if (lead && lead.pipelineStage === 'SITE_VISIT_PLANNED') {
@@ -75,12 +81,12 @@ const completeVisit = async (req, res) => {
       });
     }
 
-    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Completed site visit for ${lead?.name || 'lead'}`, targetId: visit._id, targetType: 'SiteVisit', client: lead?._id, metadata: { status: 'DONE', latitude: lat, longitude: lng } });
-    if (visit.createdBy) {
-      const manager = await User.findById(visit.createdBy).select('name email');
-      if (manager) await sendSiteVisitStatusEmail(manager, visit, 'DONE');
+    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Completed site visit for ${lead?.name || 'lead'}`, targetId: updatedVisit._id, targetType: 'SiteVisit', client: lead?._id, metadata: { status: 'DONE', latitude: lat, longitude: lng } });
+    if (updatedVisit.createdBy) {
+      const manager = await User.findById(updatedVisit.createdBy).select('name email');
+      if (manager) await sendSiteVisitStatusEmail(manager, updatedVisit, 'DONE');
     }
-    res.status(200).json({ success: true, data: visit });
+    res.status(200).json({ success: true, data: updatedVisit });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -99,18 +105,22 @@ const markNotDone = async (req, res) => {
     const nextDate = req.body.nextDate || req.body.nextScheduledAt || req.body.rescheduleDate;
     if (!notDoneReason) return res.status(400).json({ success: false, message: 'Reason is required' });
 
-    visit.status = 'MISSED';
-    visit.notDoneReason = notDoneReason;
-    if (nextDate) visit.nextDate = nextDate;
-    await visit.save();
+    const update = { status: 'MISSED', notDoneReason };
+    if (nextDate) update.nextDate = nextDate;
+    const updatedVisit = await SiteVisit.findOneAndUpdate(
+      { _id: visit._id, assignedTo: req.user.id },
+      { $set: update },
+      { new: true, runValidators: true }
+    );
+    if (!updatedVisit) return res.status(403).json({ success: false, message: 'Not authorized for this visit' });
 
-    const lead = await Client.findById(visit.lead).select('name');
-    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Marked site visit for ${lead?.name || 'lead'} as not done: ${notDoneReason}`, targetId: visit._id, targetType: 'SiteVisit', client: lead?._id, metadata: { status: 'MISSED', nextDate: visit.nextDate } });
-    if (visit.createdBy) {
-      const manager = await User.findById(visit.createdBy).select('name email');
-      if (manager) await sendSiteVisitStatusEmail(manager, visit, 'MISSED');
+    const lead = await Client.findById(updatedVisit.lead).select('name');
+    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Marked site visit for ${lead?.name || 'lead'} as not done: ${notDoneReason}`, targetId: updatedVisit._id, targetType: 'SiteVisit', client: lead?._id, metadata: { status: 'MISSED', nextDate: updatedVisit.nextDate } });
+    if (updatedVisit.createdBy) {
+      const manager = await User.findById(updatedVisit.createdBy).select('name email');
+      if (manager) await sendSiteVisitStatusEmail(manager, updatedVisit, 'MISSED');
     }
-    res.status(200).json({ success: true, data: visit });
+    res.status(200).json({ success: true, data: updatedVisit });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server Error' });

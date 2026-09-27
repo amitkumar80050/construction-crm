@@ -17,6 +17,12 @@ const Sidebar = ({ pinned, onTogglePin }) => {
   const isSalesExecutive = user?.role === 'sales executer';
   const isAuditor = user?.role === 'auditor';
   const isManagerOrAdmin = isAdmin || isManager;
+  const telecallerItems = [
+    { path: '/clients/new', icon: FaUsers, label: 'Add Lead' },
+  ];
+  const salesExecutiveItems = [
+    { path: '/my-visits', icon: FaCompass, label: 'My Site Visits' },
+  ];
 
   const navItems = isAuditor ? [
     { path: '/logs', icon: FaHistory, label: 'Activity Logs' },
@@ -76,6 +82,41 @@ const Sidebar = ({ pinned, onTogglePin }) => {
           >
             <item.icon className="nav-icon" />
             <span className="nav-label">{item.label}</span>
+            {item.badge > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: '#ef4444',
+                  color: '#fff',
+                  borderRadius: 999,
+                  fontSize: 10,
+                  minWidth: 18,
+                  height: 18,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 5px',
+                  lineHeight: 1,
+                }}
+              >
+                {item.badge}
+              </span>
+            )}
+          </NavLink>
+        ))}
+
+        {isTelecaller && telecallerItems.map((item) => (
+          <NavLink key={item.path} to={item.path} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <item.icon className="nav-icon" /><span className="nav-label">{item.label}</span>
+          </NavLink>
+        ))}
+
+        {isSalesExecutive && salesExecutiveItems.map((item) => (
+          <NavLink key={item.path} to={item.path} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <item.icon className="nav-icon" /><span className="nav-label">{item.label}</span>
           </NavLink>
         ))}
 
