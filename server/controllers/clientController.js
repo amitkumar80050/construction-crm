@@ -1,41 +1,60 @@
 const Client = require('../models/Client');
 const Activity = require('../models/Activity');
 const mongoose = require('mongoose');
+const User = require('../models/User');
+const Team = require('../models/Team');
+
+const getTeamUserIds = async (teamIds) => (await User.find({ teamIds: { $in: teamIds } }).distinct('_id'));
+
+const canAccessClient = async (client, req) => {
+  if (req.user.role === 'admin') return true;
+  if (['telecaller', 'sales executer'].includes(req.user.role)) {
+    return String(client.assignedTo?._id || client.assignedTo) === String(req.user.id);
+  }
+  if (req.user.role !== 'manager') return false;
+  const teamIds = (req.user.teamIds || []).map(String);
+  if (client.team && teamIds.includes(String(client.team))) return true;
+  const ownerId = client.assignedTo?._id || client.assignedTo;
+  if (!ownerId) return false;
+  const owner = await User.findById(ownerId).select('teamIds');
+  return (owner?.teamIds || []).some((teamId) => teamIds.includes(String(teamId)));
+};
 
 // @desc    Get all clients
 // @route   GET /api/clients
 // @access  Private
 const getClients = async (req, res) => {
   try {
-    let query = {};
-
-
-    if (req.user.role !== 'admin') {
-      if (req.user.teamIds?.length) {
-        query.$or = [{ team: { $in: req.user.teamIds } }, { assignedTo: req.user.id }];
-      } else {
-        query.assignedTo = req.user.id; // no team → only see own assigned clients
-      }
+    const filters = [];
+    if (['telecaller', 'sales executer'].includes(req.user.role)) {
+      filters.push({ assignedTo: req.user.id });
+    } else if (req.user.role === 'manager') {
+      const teamIds = req.user.teamIds || [];
+      filters.push({ $or: [{ team: { $in: teamIds } }, { assignedTo: { $in: await getTeamUserIds(teamIds) } }] });
+    } else if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
     // Filter by status
     if (req.query.status) {
-      query.status = req.query.status;
+      filters.push({ status: req.query.status });
     }
 
     // Filter by assigned user
-    if (req.query.assignedTo) {
-      query.assignedTo = req.query.assignedTo;
+    if (req.query.assignedTo && ['admin', 'manager'].includes(req.user.role)) {
+      filters.push({ assignedTo: req.query.assignedTo });
     }
 
     // Search by name or company
     if (req.query.search) {
-      query.$or = [
-        { name: { $regex: req.query.search, $options: 'i' } },
-        { company: { $regex: req.query.search, $options: 'i' } },
-        { email: { $regex: req.query.search, $options: 'i' } },
-      ];
+      const search = String(req.query.search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filters.push({ $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { company: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ] });
     }
+    const query = filters.length > 1 ? { $and: filters } : filters[0] || {};
 
     // Pagination
     const page = parseInt(req.query.page) || 1;
@@ -83,6 +102,8 @@ const getClient = async (req, res) => {
       });
     }
 
+    if (!await canAccessClient(client, req)) return res.status(403).json({ success: false, message: 'You can only view leads assigned to you or your team.' });
+
     res.status(200).json({
       success: true,
       data: client,
@@ -101,8 +122,39 @@ const getClient = async (req, res) => {
 // @access  Private
 const createClient = async (req, res) => {
   try {
-    const clientData = req.body;
-    clientData.assignedTo = req.user.id;
+    if (!['admin', 'manager', 'telecaller'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Only Admins, Managers, and Telecallers can create leads.' });
+    }
+    const clientData = { ...req.body };
+    const email = typeof clientData.email === 'string' ? clientData.email.trim().toLowerCase() : '';
+    const phone = typeof clientData.phone === 'string' ? clientData.phone.replace(/\D/g, '') : '';
+    if (!clientData.name?.trim() || !clientData.source) {
+      return res.status(400).json({ success: false, message: 'Name and source are required.' });
+    }
+    if (!email && !phone) return res.status(400).json({ success: false, message: 'A valid phone number or email is required.' });
+    if (phone && (phone.length < 7 || phone.length > 15)) {
+      return res.status(400).json({ success: false, message: 'Phone number must contain between 7 and 15 digits.' });
+    }
+    const contactQuery = [];
+    if (email) contactQuery.push({ email });
+    if (phone) contactQuery.push({ phone });
+    const duplicate = await Client.findOne({ $or: contactQuery }).select('name');
+    if (duplicate) return res.status(409).json({ success: false, message: `A lead already exists with this email or phone (${duplicate.name}).` });
+
+    let teamId = req.user.role === 'admin' ? clientData.team : (req.user.teamIds || [])[0];
+    if (req.user.role === 'manager' && clientData.team && !(req.user.teamIds || []).some((id) => String(id) === String(clientData.team))) {
+      return res.status(403).json({ success: false, message: 'You can only create leads for your own team.' });
+    }
+    if (req.user.role === 'admin' && teamId && !await Team.exists({ _id: teamId })) {
+      return res.status(400).json({ success: false, message: 'Team not found.' });
+    }
+    clientData.email = email;
+    clientData.phone = phone;
+    clientData.company = clientData.company?.trim() || clientData.name.trim();
+    clientData.team = teamId || null;
+    clientData.assignedTo = req.user.role === 'telecaller' ? req.user.id : null;
+    clientData.createdBy = req.user.id;
+    clientData.pipelineStage = 'NEW';
 
     // Generate client ID
     clientData.clientId = await Client.generateClientId();
@@ -124,6 +176,8 @@ const createClient = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    if (error.name === 'ValidationError') return res.status(400).json({ success: false, message: error.message });
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'A lead with this contact already exists.' });
     res.status(500).json({
       success: false,
       message: 'Server Error',
@@ -145,7 +199,18 @@ const updateClient = async (req, res) => {
       });
     }
 
-    client = await Client.findByIdAndUpdate(req.params.id, req.body, {
+    if (!await canAccessClient(client, req)) {
+      return res.status(403).json({ success: false, message: 'You can only edit leads assigned to you or your team.' });
+    }
+    if (!['admin', 'manager', 'telecaller'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Your role cannot edit lead details.' });
+    }
+
+    const editableFields = ['name', 'company', 'email', 'phone', 'address', 'source', 'status', 'projectValue', 'notes', 'tags', 'followUpDate', 'nextContactDate'];
+    const updateData = Object.fromEntries(Object.entries(req.body).filter(([key]) => editableFields.includes(key)));
+    if (updateData.email) updateData.email = updateData.email.trim().toLowerCase();
+
+    client = await Client.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     });
@@ -215,11 +280,19 @@ const deleteClient = async (req, res) => {
 // @access  Private
 const getClientStats = async (req, res) => {
   try {
-    const total = await Client.countDocuments();
-    const leads = await Client.countDocuments({ status: 'lead' });
-    const active = await Client.countDocuments({ status: 'active' });
-    const closed = await Client.countDocuments({ status: 'closed' });
-    const lost = await Client.countDocuments({ status: 'lost' });
+    const scope = req.user.role === 'admin'
+      ? {}
+      : ['telecaller', 'sales executer'].includes(req.user.role)
+        ? { assignedTo: req.user.id }
+        : req.user.role === 'manager'
+          ? { $or: [{ team: { $in: req.user.teamIds || [] } }, { assignedTo: { $in: await getTeamUserIds(req.user.teamIds || []) } }] }
+          : null;
+    if (!scope) return res.status(403).json({ success: false, message: 'Access denied.' });
+    const total = await Client.countDocuments(scope);
+    const leads = await Client.countDocuments({ ...scope, status: 'lead' });
+    const active = await Client.countDocuments({ ...scope, status: 'active' });
+    const closed = await Client.countDocuments({ ...scope, status: 'closed' });
+    const lost = await Client.countDocuments({ ...scope, status: 'lost' });
 
     res.status(200).json({
       success: true,

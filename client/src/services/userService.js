@@ -40,6 +40,14 @@ const userService = {
   assignPermissions: async (id, permissions) => {
     return await api.put(`/users/${id}/permissions`, { permissions });
   },
+
+  verifyUserOtp: async (userId, otp) => {
+    return await api.post('/auth/verify-user-otp', { userId, otp });
+  },
+  resendUserOtp: async (userId) => {
+    return await api.post('/auth/resend-user-otp', { userId });
+  },
+
 };
 
 export default userService;

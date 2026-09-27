@@ -1,20 +1,38 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaArrowLeft, FaFilePdf } from 'react-icons/fa';
 import clientService from '../services/clientService';
 import PDFUploader from '../components/PDFUploader';
 import ClientForm from '../components/clients/ClientForm';
+import teamService from '../services/teamService';
+import { useAuth } from '../hooks/useAuth';
 
 const AddClient = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [pdfData, setPdfData] = useState(null);
+  const [teams, setTeams] = useState([]);
+  const [teamId, setTeamId] = useState('');
+
+  useEffect(() => {
+    if (!['admin', 'manager'].includes(user?.role)) return;
+    teamService.getTeams().then((response) => {
+      const list = response.data?.data || [];
+      setTeams(list);
+      setTeamId(list[0]?._id || '');
+    }).catch(() => toast.error('Unable to load teams'));
+  }, [user?.role]);
 
   const handleSubmit = async (payload) => {
+    if (['admin', 'manager'].includes(user?.role) && !teamId) {
+      toast.error('Select a team before creating a lead.');
+      return;
+    }
     setSaving(true);
     try {
-      await clientService.createClient(payload);
+      await clientService.createClient({ ...payload, teamId: teamId || undefined });
       toast.success('Client added successfully!');
       navigate('/clients');
     } catch (error) {
@@ -75,6 +93,7 @@ const AddClient = () => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         maxWidth: '800px'
       }}>
+        {['admin', 'manager'].includes(user?.role) && <label style={{ display: 'block', marginBottom: 18, color: '#334155' }}>Team<select aria-label="Lead team" required value={teamId} onChange={(event) => setTeamId(event.target.value)} style={{ display: 'block', width: '100%', maxWidth: 440, padding: 10, marginTop: 6, border: '1px solid #cbd5e1', borderRadius: 5 }}><option value="">Select team</option>{teams.map((team) => <option key={team._id} value={team._id}>{team.name}</option>)}</select></label>}
         {/* PDF Upload Section */}
         <div style={{
           marginBottom: '24px',

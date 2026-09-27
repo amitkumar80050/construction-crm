@@ -2,11 +2,18 @@ const Remark = require('../models/Remark');
 const Client = require('../models/Client');
 const Activity = require('../models/Activity');
 
+const canAccessClient = async (clientId, req) => {
+  if (req.user.role === 'admin' || req.user.role === 'manager') return true;
+  const client = await Client.findById(clientId).select('assignedTo');
+  return client && String(client.assignedTo) === String(req.user.id);
+};
+
 // @desc    Get all remarks for a client
 // @route   GET /api/remarks/client/:clientId
 // @access  Private
 const getRemarksByClient = async (req, res) => {
   try {
+    if (!(await canAccessClient(req.params.clientId, req))) return res.status(403).json({ success: false, message: 'You can only view notes for your own leads' });
     const remarks = await Remark.find({ client: req.params.clientId })
       .populate('user', 'name email')
       .sort({ createdAt: -1 });
@@ -109,6 +116,7 @@ const getRemark = async (req, res) => {
 const createRemark = async (req, res) => {
   try {
     const { client, content, type, visibility } = req.body;
+    if (!(await canAccessClient(client, req))) return res.status(403).json({ success: false, message: 'You can only add notes to your own leads' });
 
     const remark = await Remark.create({
       client,

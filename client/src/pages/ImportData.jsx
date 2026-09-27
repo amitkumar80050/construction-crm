@@ -38,6 +38,35 @@ const ImportData = () => {
     return date.toLocaleString();
   };
 
+  const saveDownload = (blob, fileName) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleTemplateDownload = async () => {
+    try {
+      const response = await importService.downloadTemplate();
+      saveDownload(response.data, 'leads-import-template.csv');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to download template');
+    }
+  };
+
+  const handleErrorReportDownload = async (importId) => {
+    try {
+      const response = await importService.downloadErrorReport(importId);
+      saveDownload(response.data, `import-errors-${importId}.csv`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to download error report');
+    }
+  };
+
   const tabButtonStyle = (tab) => ({
     padding: '10px 18px',
     background: activeTab === tab ? '#2563eb' : 'transparent',
@@ -56,8 +85,9 @@ const ImportData = () => {
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ margin: 0, color: '#1e293b', fontSize: '24px' }}>Import Data</h1>
-        <a
-          href={importService.getTemplateUrl('leads')}
+        <button
+          type="button"
+          onClick={handleTemplateDownload}
           style={{
             padding: '10px 16px',
             background: '#f1f5f9',
@@ -65,14 +95,13 @@ const ImportData = () => {
             border: 'none',
             borderRadius: '8px',
             fontSize: '13px',
-            textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
           }}
         >
           <FaFileDownload size={12} /> Download Leads Template
-        </a>
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
@@ -121,14 +150,15 @@ const ImportData = () => {
                       </td>
                       <td style={{ padding: '10px', textAlign: 'center' }}>
                         {log.failedRecords > 0 && (
-                          <a
-                            href={importService.getErrorReportUrl(log._id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => handleErrorReportDownload(log._id)}
+                            aria-label={`Download error report for ${log.fileName}`}
+                            title="Download error report"
                             style={{ color: '#2563eb' }}
                           >
                             <FaFileDownload size={13} />
-                          </a>
+                          </button>
                         )}
                       </td>
                     </tr>

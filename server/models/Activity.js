@@ -10,20 +10,18 @@ const activitySchema = new mongoose.Schema({
   userNameSnapshot: String, // name at time of action
   targetId: { type: mongoose.Schema.Types.ObjectId, default: null },
   targetType: { type: String, default: null }, // 'Client', 'Remark', 'Stage', 'Reminder', 'User'
-  ipAddress: String,
-  
   client: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client',
   },
   type: {
     type: String,
-    enum: ['login', 'logout', 'create', 'update', 'delete', 'view', 'export', 'import'],
+    enum: ['login', 'logout', 'create', 'update', 'delete', 'view', 'export', 'import', 'seed'],
     required: true,
   },
   module: {
     type: String,
-    enum: ['auth', 'client', 'remark', 'stage', 'reminder', 'user', 'analytics'],
+    enum: ['auth', 'client', 'leads', 'remark', 'stage', 'reminder', 'user', 'analytics', 'attendance', 'site_visit', 'team', 'settings', 'import', 'export', 'whatsapp', 'seed'],
     required: true,
   },
   description: {
@@ -44,5 +42,8 @@ const activitySchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+activitySchema.index({ createdAt: -1, _id: -1 });
+activitySchema.index({ user: 1, createdAt: -1, _id: -1 });
 
 module.exports = mongoose.model('Activity', activitySchema);

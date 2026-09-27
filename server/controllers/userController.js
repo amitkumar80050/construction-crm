@@ -142,13 +142,19 @@ const createUser = async (req, res) => {
 
     let resolvedTeamIds = [];
     if (teamIds !== undefined || teams !== undefined) {
-      resolvedTeamIds = await normalizeTeamIds(teamIds ?? teams);
+      try {
+        resolvedTeamIds = await normalizeTeamIds(teamIds ?? teams);
+      } catch (teamError) {
+        return res.status(400).json({ success: false, message: teamError.message });
+      }
     }
 
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(400).json({ success: false, message: 'User already exists with this email' });
     }
+
+    // ...rest unchanged
 
     const userId = await User.generateUserId();
 
@@ -226,6 +232,10 @@ const updateUser = async (req, res) => {
 
     if (teamIds !== undefined || teams !== undefined) {
       updateData.teamIds = await normalizeTeamIds(teamIds ?? teams);
+      const teamLeadRole = await Team.findOne({ teamLead: req.params.id, _id: { $nin: updateData.teamIds } });
+      if (teamLeadRole) {
+        return res.status(400).json({ success: false, message: 'Update the team lead assignment before removing this manager from the team.' });
+      }
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
@@ -393,6 +403,10 @@ const assignRole = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot downgrade your own admin role' });
     }
 
+    if (req.body.role !== 'manager' && await Team.exists({ teamLead: req.params.id })) {
+      return res.status(400).json({ success: false, message: 'Reassign this user\'s teams before changing their role.' });
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { role: req.body.role },
@@ -470,6 +484,53 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Update a user's basic info (name/phone/status) — Manager restricted to own team, no role change
+// @route   PUT /api/auth/users/:id
+// @access  Private (Admin: any user; Manager: own team only)
+const updateUserRestricted = async (req, res) => {
+  try {
+    const { role, permissions, password, teamIds, ...allowedFields } = req.body; // strip anything manager shouldn't touch
+
+    // Managers may only touch phone/status/name — not email/role/team
+    let updateData = allowedFields;
+    if (req.user.role === 'manager') {
+      const { name, phone, isActive } = allowedFields;
+      updateData = { name, phone, isActive };
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true })
+      .select('-password -refreshToken');
+
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    await Activity.create({ user: req.user.id, type: 'update', module: 'user', description: `Updated user: ${user.email}` });
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    List users — Admin sees all, Manager sees only own team
+// @route   GET /api/auth/users
+// @access  Private (Admin, Manager)
+const listUsersScoped = async (req, res) => {
+  try {
+    let query = { isDeleted: { $ne: true } };
+    if (req.user.role === 'manager') {
+      query._id = { $ne: req.user.id };
+      query.role = { $in: ['telecaller', 'sales executer'] };
+      query.teamIds = { $in: req.user.teamIds || [] };
+    }
+    const users = await User.find(query).select('-password -refreshToken');
+    res.status(200).json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+
+
 module.exports = {
   getUsers,
   getUser,
@@ -482,4 +543,6 @@ module.exports = {
   assignRole,
   assignPermissions,
   updateProfile,
+   updateUserRestricted, 
+   listUsersScoped
 };

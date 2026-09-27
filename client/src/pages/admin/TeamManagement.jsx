@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { FaPlus, FaUsers, FaUserTie, FaTrash, FaEdit, FaArchive } from 'react-icons/fa';
+import { FaPlus, FaUsers, FaUserTie, FaTrash, FaEdit } from 'react-icons/fa';
 import teamService from '../../services/teamService';
 import userService from '../../services/userService';
 
@@ -10,6 +10,7 @@ const TeamManagement = () => {
   const [loading, setLoading] = useState(true);
 
   const [showCreate, setShowCreate] = useState(false);
+  const [editingTeam, setEditingTeam] = useState(null);
   const [createForm, setCreateForm] = useState({ name: '', code: '', department: 'sales', description: '', teamLead: '' });
   const [creating, setCreating] = useState(false);
 
@@ -53,14 +54,44 @@ const TeamManagement = () => {
     }
   };
 
-  const handleArchive = async (teamId) => {
-    if (!window.confirm('Archive this team?')) return;
+  const openEdit = (team) => {
+    setEditingTeam(team);
+    setCreateForm({
+      name: team.name,
+      code: team.code,
+      department: team.department || 'sales',
+      description: team.description || '',
+      teamLead: team.teamLead?._id || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!createForm.name.trim() || !createForm.code.trim()) {
+      toast.error('Team name and code are required');
+      return;
+    }
+    setCreating(true);
     try {
-      await teamService.deleteTeam(teamId);
-      toast.success('Team archived');
+      await teamService.updateTeam(editingTeam._id, createForm);
+      toast.success('Team updated');
+      setEditingTeam(null);
+      setCreateForm({ name: '', code: '', department: 'sales', description: '', teamLead: '' });
       fetchAll();
     } catch (error) {
-      toast.error('Unable to archive team');
+      toast.error(error.response?.data?.message || 'Unable to update team');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (teamId) => {
+    if (!window.confirm('Delete this team? Teams with members cannot be deleted.')) return;
+    try {
+      await teamService.deleteTeam(teamId);
+      toast.success('Team deleted');
+      fetchAll();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to delete team');
     }
   };
 
@@ -132,7 +163,8 @@ const TeamManagement = () => {
                   </td>
                   <td style={{ padding: '12px', display: 'flex', gap: '8px' }}>
                     <button onClick={() => openManage(t)} title="Manage members" style={{ background: '#dbeafe', color: '#2563eb', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer' }}><FaUsers size={12} /></button>
-                    <button onClick={() => handleArchive(t._id)} title="Archive" style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer' }}><FaArchive size={12} /></button>
+                    <button onClick={() => openEdit(t)} title="Edit team" style={{ background: '#e7f1ec', color: '#176b55', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer' }}><FaEdit size={12} /></button>
+                    <button onClick={() => handleDelete(t._id)} title="Delete team" style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer' }}><FaTrash size={12} /></button>
                   </td>
                 </tr>
               ))}
@@ -142,10 +174,10 @@ const TeamManagement = () => {
       )}
 
       {/* Create Team modal */}
-      {showCreate && (
+      {(showCreate || editingTeam) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '12px', padding: '24px', maxWidth: '420px', width: '90%' }}>
-            <h3 style={{ marginBottom: '16px' }}>Create Team</h3>
+            <h3 style={{ marginBottom: '16px' }}>{editingTeam ? `Edit ${editingTeam.name}` : 'Create Team'}</h3>
             <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
               <div><label style={labelStyle}>Team Name *</label><input style={inputStyle} value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} /></div>
               <div><label style={labelStyle}>Team Code *</label><input style={inputStyle} placeholder="TEAM-LKO" value={createForm.code} onChange={(e) => setCreateForm({ ...createForm, code: e.target.value })} /></div>
@@ -154,13 +186,13 @@ const TeamManagement = () => {
                 <label style={labelStyle}>Team Lead</label>
                 <select style={inputStyle} value={createForm.teamLead} onChange={(e) => setCreateForm({ ...createForm, teamLead: e.target.value })}>
                   <option value="">Select...</option>
-                  {users.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
+                  {users.filter((u) => u.role === 'manager').map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
                 </select>
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={() => setShowCreate(false)} style={{ padding: '10px 16px', background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleCreate} disabled={creating} style={{ padding: '10px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>{creating ? 'Creating...' : 'Create Team'}</button>
+              <button onClick={() => { setShowCreate(false); setEditingTeam(null); }} style={{ padding: '10px 16px', background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={editingTeam ? handleSaveEdit : handleCreate} disabled={creating} style={{ padding: '10px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>{creating ? 'Saving...' : editingTeam ? 'Save changes' : 'Create Team'}</button>
             </div>
           </div>
         </div>
@@ -176,7 +208,7 @@ const TeamManagement = () => {
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
               <select style={{ ...inputStyle, flex: 1 }} value={addMemberId} onChange={(e) => setAddMemberId(e.target.value)}>
                 <option value="">Add user...</option>
-                {users.filter((u) => !manageTeam.members.some((m) => m._id === u._id)).map((u) => (
+                {users.filter((u) => ['telecaller', 'sales executer'].includes(u.role) && !manageTeam.members.some((m) => m._id === u._id)).map((u) => (
                   <option key={u._id} value={u._id}>{u.name}</option>
                 ))}
               </select>

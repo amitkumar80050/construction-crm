@@ -2,6 +2,8 @@
 
 A comprehensive CRM system for construction companies to manage clients, track leads, manage remarks, stages, reminders, and analytics.
 
+For production Docker, Nginx, and Let's Encrypt setup, see [docs/Deployment.md](docs/Deployment.md). The module-by-module MERN adaptation guide is in [docs/MERN_Adaptation_Modules_2_to_11.md](docs/MERN_Adaptation_Modules_2_to_11.md).
+
 ## Features
 
 - **User Management**: Admin, Manager, and User roles with different permissions

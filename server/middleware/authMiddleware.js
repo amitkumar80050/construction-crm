@@ -1,6 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const isAllowedAuditorRequest = (req) => {
+  const path = (req.originalUrl || req.url || '').split('?')[0];
+  if (req.method === 'GET') {
+    return ['/api/admin/logs', '/api/auth/me', '/api/notifications'].includes(path);
+  }
+  return req.method === 'POST' && path === '/api/auth/logout';
+};
+
 const protect = async (req, res, next) => {
   let token;
 
@@ -20,6 +28,10 @@ const protect = async (req, res, next) => {
           success: false,
           message: 'Not authorized, user not found',
         });
+      }
+
+      if (req.user.role === 'auditor' && !isAllowedAuditorRequest(req)) {
+        return res.status(403).json({ success: false, message: 'Auditors have read-only access to activity logs.' });
       }
 
       next();
@@ -51,6 +63,14 @@ const admin = (req, res, next) => {
   }
 };
 
+const auditViewer = (req, res, next) => {
+  if (req.user && ['admin', 'auditor'].includes(req.user.role)) {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: 'Access denied. Admin or Auditor only.' });
+  }
+};
+
 const manager = (req, res, next) => {
   if (req.user && (req.user.role === 'admin' || req.user.role === 'manager')) {
     next();
@@ -62,4 +82,4 @@ const manager = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin, manager };
+module.exports = { protect, admin, auditViewer, isAllowedAuditorRequest, manager };

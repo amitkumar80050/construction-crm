@@ -9,6 +9,12 @@ const activityLogRoutes = require('./routes/activityLogRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
 const teamRoutes = require('./routes/teamRoutes');
 const teamChatRoutes = require('./routes/teamChatRoutes');
+const authScopedRoutes = require('./routes/authScopedRoutes'); 
+const leadRoutes = require('./routes/leadRoutes'); 
+const managerRoutes = require('./routes/managerRoutes');
+const siteVisitRoutes = require('./routes/siteVisitRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
+
 
 // ...
 
@@ -16,17 +22,25 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(passport.initialize());
 app.set('etag', false);
+
 app.use('/api/import', importRoutes);
 app.use('/api', activityLogRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/teams', teamChatRoutes);
+app.use('/api/auth', authScopedRoutes);
+app.use('/api/leads', leadRoutes);
+app.use('/api/manager', managerRoutes);
+app.use('/api/site-visits', siteVisitRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -58,6 +72,12 @@ mountRoute('/api/dev', './routes/seedRoutes');
 mountRoute('/api/import', './routes/importRoutes');
 mountRoute('/api/export', './routes/exportRoutes');
 mountRoute('/api/settings', './routes/settingsRoutes');
+mountRoute('/api/notifications', './routes/notificationRoutes');
+mountRoute('/api/auth', './routes/authScopedRoutes');
+mountRoute('/api/leads', './routes/leadRoutes');
+mountRoute('/api/manager', './routes/managerRoutes');
+mountRoute('/api/site-visits', './routes/siteVisitRoutes');
+
 
 // 404 handler — must come AFTER all real routes are mounted
 app.use((req, res) => {

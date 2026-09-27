@@ -13,20 +13,20 @@ const clientSchema = new mongoose.Schema({
   },
   company: {
     type: String,
-    required: [true, 'Please add a company name'],
+    trim: true,
+    default: '',
   },
   email: {
     type: String,
-    required: [true, 'Please add an email'],
     lowercase: true,
-    match: [
-      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-      'Please add a valid email',
-    ],
+    trim: true,
+    default: '',
+    validate: { validator: (value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), message: 'Please add a valid email' },
   },
   phone: {
     type: String,
-    required: [true, 'Please add a phone number'],
+    trim: true,
+    default: '',
   },
   address: {
     street: String,
@@ -48,8 +48,9 @@ const clientSchema = new mongoose.Schema({
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    default: null,
   },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   currentStage: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Stage',
@@ -72,6 +73,12 @@ const clientSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+    pipelineStage: {
+    type: String,
+    enum: ['NEW', 'CONNECTED', 'INTERESTED', 'FOLLOW_UP', 'SITE_VISIT_PLANNED', 'SITE_VISIT_DONE', 'QUOTATION', 'CONVERTED'],
+    default: 'NEW',
+  },
+  followUpDate: { type: Date },
 
   team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
 
@@ -89,7 +96,23 @@ clientSchema.statics.generateClientId = async function () {
 };
 
 clientSchema.pre('save', function (next) {
+  if (!this.company && this.name) this.company = this.name;
   this.updatedAt = Date.now();
+  next();
+});
+
+clientSchema.pre('validate', function (next) {
+  if (!this.phone?.trim() && !this.email?.trim()) {
+    this.invalidate('phone', 'A valid phone number or email is required');
+  }
+  if (this.phone) {
+    const phoneDigits = this.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+      this.invalidate('phone', 'Phone number must contain between 7 and 15 digits');
+    } else {
+      this.phone = phoneDigits;
+    }
+  }
   next();
 });
 

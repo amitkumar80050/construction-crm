@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const config = require('../config/env');
+const { createNotification } = require('./inAppNotificationService');
 
 const transporter = nodemailer.createTransport({
   host: config.smtpHost,
@@ -100,18 +101,18 @@ const sendUserCreatedOtpEmail = async (email, name, userId, otp, expiryMinutes) 
     await transporter.sendMail({
       from: `"Construction CRM" <himanshu.prpwebs@gmail.com>`,
       to: email,
-      subject: 'BuildFlow CRM - Verify Your Account',
+      subject: 'BuildTrack Pro CRM - Verify Your Account',
       html: `
         <h1>Verify Your Account</h1>
         <p>Hello ${name},</p>
-        <p>Your BuildFlow CRM account has been created by the administrator.</p>
+        <p>Your BuildTrack Pro CRM account has been created by the administrator.</p>
         <p><strong>User ID:</strong> ${userId}</p>
         <p>Your verification OTP is:</p>
         <h2 style="letter-spacing: 4px;">${otp}</h2>
         <p>This OTP is valid for ${expiryMinutes} minutes.</p>
         <p>Please use this OTP to verify your account.</p>
         <p>If you did not expect this account, please contact your administrator.</p>
-        <p>Regards,<br/>BuildFlow CRM</p>
+        <p>Regards,<br/>BuildTrack Pro CRM</p>
       `,
     });
   } catch (error) {
@@ -120,10 +121,109 @@ const sendUserCreatedOtpEmail = async (email, name, userId, otp, expiryMinutes) 
   }
 };
 
+const sendSiteVisitAssignmentEmail = async (user, visit) => {
+  await createNotification({
+    recipient: user._id,
+    type: 'SITE_VISIT_ASSIGNED',
+    title: 'New site visit assigned',
+    message: `A site visit is scheduled for ${new Date(visit.scheduledAt).toLocaleString()} at ${visit.address}.`,
+    entityType: 'SiteVisit',
+    entityId: visit._id,
+  }).catch((error) => console.error('Site visit in-app notification error:', error.message));
+  try {
+    await transporter.sendMail({
+      from: '"Construction CRM" <himanshu.prpwebs@gmail.com>',
+      to: user.email,
+      subject: 'New site visit assigned',
+      html: `<p>Hello ${user.name},</p><p>A site visit has been assigned to you for ${new Date(visit.scheduledAt).toLocaleString()}.</p><p><strong>Location:</strong> ${visit.address}</p><p><strong>Priority:</strong> ${visit.priority}</p>`,
+    });
+  } catch (error) { console.error('Site visit notification error:', error); }
+};
+
+const sendAttendanceDecisionEmail = async (user, status, remarks) => {
+  await createNotification({
+    recipient: user._id,
+    type: `ATTENDANCE_${status}`,
+    title: `Attendance ${status.toLowerCase()}`,
+    message: remarks ? `Your attendance was ${status.toLowerCase()}: ${remarks}` : `Your attendance was ${status.toLowerCase()}.`,
+    entityType: 'Attendance',
+  }).catch((error) => console.error('Attendance in-app notification error:', error.message));
+  try {
+    await transporter.sendMail({
+      from: '"Construction CRM" <himanshu.prpwebs@gmail.com>',
+      to: user.email,
+      subject: `Attendance ${status.toLowerCase()}`,
+      html: `<p>Hello ${user.name},</p><p>Your attendance request was <strong>${status.toLowerCase()}</strong>.</p>${remarks ? `<p>Manager remarks: ${remarks}</p>` : ''}`,
+    });
+  } catch (error) { console.error('Attendance notification error:', error); }
+};
+
+const sendLeadAssignmentEmail = async (user, lead) => {
+  await createNotification({
+    recipient: user._id,
+    type: 'LEAD_ASSIGNED',
+    title: 'Lead assigned to you',
+    message: `${lead.name} has been assigned to you.`,
+    entityType: 'Client',
+    entityId: lead._id,
+  });
+  try {
+    await transporter.sendMail({
+      from: '"Construction CRM" <himanshu.prpwebs@gmail.com>',
+      to: user.email,
+      subject: 'A lead has been assigned to you',
+      html: `<p>Hello ${user.name},</p><p><strong>${lead.name}</strong> has been assigned to you. Please follow up with the customer.</p>`,
+    });
+  } catch (error) { console.error('Lead assignment email error:', error.message); }
+};
+
+const sendLeadStageNotificationEmail = async (user, lead) => {
+  await createNotification({
+    recipient: user._id,
+    type: 'LEAD_SITE_VISIT_PLANNED',
+    title: 'Lead is ready for a site visit',
+    message: `${lead.name} has reached Site Visit Planned. Assign a Sales Executive to schedule the visit.`,
+    entityType: 'Client',
+    entityId: lead._id,
+  });
+  try {
+    await transporter.sendMail({
+      from: '"Construction CRM" <himanshu.prpwebs@gmail.com>',
+      to: user.email,
+      subject: 'Lead ready for site visit assignment',
+      html: `<p>Hello ${user.name},</p><p><strong>${lead.name}</strong> has reached Site Visit Planned and is ready for a Sales Executive assignment.</p>`,
+    });
+  } catch (error) { console.error('Lead stage email error:', error.message); }
+};
+
+const sendSiteVisitStatusEmail = async (user, visit, status) => {
+  await createNotification({
+    recipient: user._id,
+    type: `SITE_VISIT_${status}`,
+    title: `Site visit ${status.toLowerCase().replace('_', ' ')}`,
+    message: `Site visit ${visit._id} was marked ${status.toLowerCase().replace('_', ' ')}.${(visit.notes || visit.completionNotes) ? ` Notes: ${visit.notes || visit.completionNotes}` : ''}`,
+    entityType: 'SiteVisit',
+    entityId: visit._id,
+  }).catch((error) => console.error('Site visit status in-app notification error:', error.message));
+  try {
+    await transporter.sendMail({
+      from: '"Construction CRM" <himanshu.prpwebs@gmail.com>',
+      to: user.email,
+      subject: `Site visit ${status}`,
+      html: `<p>Hello ${user.name},</p><p>Site visit <strong>${visit._id}</strong> was marked <strong>${status}</strong> by the assigned executive.</p>${(visit.notes || visit.completionNotes) ? `<p>Notes: ${visit.notes || visit.completionNotes}</p>` : ''}`,
+    });
+  } catch (error) { console.error('Site visit status notification error:', error); }
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendResetPasswordEmail,
   sendOtpEmail,
   sendReminderEmail,
   sendUserCreatedOtpEmail,
+  sendSiteVisitAssignmentEmail,
+  sendAttendanceDecisionEmail,
+  sendLeadAssignmentEmail,
+  sendLeadStageNotificationEmail,
+  sendSiteVisitStatusEmail,
 };

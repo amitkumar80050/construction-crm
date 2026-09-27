@@ -32,6 +32,12 @@ const importService = {
   process: async (data) => {
     return await api.post('/import/process', data);
   },
+
+  getHistory: async () => api.get('/import/history'),
+
+  downloadTemplate: async () => api.get('/import/template/leads', { responseType: 'blob' }),
+
+  downloadErrorReport: async (importId) => api.get(`/import/${importId}/errors`, { responseType: 'blob' }),
 };
 
 export default importService;

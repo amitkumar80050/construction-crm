@@ -3,8 +3,10 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const TeamChannel = require('../models/TeamChannel');
 const TeamMessage = require('../models/TeamMessage');
+const { setSocketServer } = require('../services/inAppNotificationService');
 
 function initSocket(io) {
+  setSocketServer(io);
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -20,6 +22,8 @@ function initSocket(io) {
   });
 
   io.on('connection', (socket) => {
+    socket.join(`user:${socket.user._id}`);
+
     socket.on('team:join', async (teamId) => {
       // Verify membership server-side — never trust the client's teamId alone
       const isMember = socket.user.role === 'admin' || socket.user.teamIds?.some((id) => String(id) === String(teamId));

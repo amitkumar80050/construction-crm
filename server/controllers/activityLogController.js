@@ -29,7 +29,7 @@ const getMyLogs = async (req, res) => {
     const { page, limit, skip } = paginate(req.query);
 
     const [data, total] = await Promise.all([
-      Activity.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Activity.find(filter).populate('user', 'name userId').sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       Activity.countDocuments(filter),
     ]);
 
@@ -97,7 +97,7 @@ const getEmployeeLogs = async (req, res) => {
     const { page, limit, skip } = paginate(req.query);
 
     const [data, total] = await Promise.all([
-      Activity.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Activity.find(filter).populate('user', 'name userId').sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       Activity.countDocuments(filter),
     ]);
 
@@ -127,7 +127,7 @@ const getAllLogs = async (req, res) => {
 
     const { page, limit, skip } = paginate(req.query);
     const [data, total] = await Promise.all([
-      Activity.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Activity.find(filter).populate('user', 'name userId').sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       Activity.countDocuments(filter),
     ]);
 

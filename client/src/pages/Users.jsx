@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import {
   FaUserPlus, FaSearch, FaEdit, FaTrash, FaUndo, FaKey,
-  FaUserShield, FaShieldAlt, FaSort, FaSortUp, FaSortDown, FaBan
+  FaUserShield, FaShieldAlt, FaSort, FaSortUp, FaSortDown, FaBan,FaLink
 } from 'react-icons/fa';
 import userService from '../services/userService';
 import teamService from '../services/teamService';
 import { useAuth } from '../hooks/useAuth';
 
-const ROLES = ['admin', 'manager', 'telecaller','sales executer'];
+const ROLES = ['admin', 'auditor', 'manager', 'telecaller','sales executer'];
 const PERMISSIONS = [
   'manage_leads', 'manage_remarks', 'manage_stages',
   'manage_reminders', 'manage_users', 'view_analytics',
@@ -16,7 +16,124 @@ const PERMISSIONS = [
 ];
 
 const emptyCreateForm = {
-  name: '', email: '', password: '', phone: '', role: 'telecaller', teamIds: 'lko'
+  name: '', email: '', password: '', phone: '', role: 'telecaller', teamIds: ''
+};
+
+const VerifyUserModal = ({ userId, email, onClose, onVerified }) => {
+  const [digits, setDigits] = useState(new Array(6).fill(''));
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(300);
+  const inputRefs = React.useRef([]);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const timer = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearInterval(timer);
+  }, [secondsLeft]);
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
+  };
+
+  const handleDigitChange = (i, value) => {
+    if (!/^\d?$/.test(value)) return;
+    const next = [...digits];
+    next[i] = value;
+    setDigits(next);
+    if (value && i < 5) inputRefs.current[i + 1]?.focus();
+  };
+
+  const handleKeyDown = (i, e) => {
+    if (e.key === 'Backspace' && !digits[i] && i > 0) inputRefs.current[i - 1]?.focus();
+  };
+
+  const handleVerify = async () => {
+    const otp = digits.join('');
+    if (otp.length !== 6) {
+      toast.error('Please enter the full 6-digit code');
+      return;
+    }
+    setVerifying(true);
+    try {
+      await userService.verifyUserOtp(userId, otp);
+      toast.success('Account verified successfully! The user can now log in.');
+      onVerified();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Invalid OTP. Please try again.');
+      setDigits(new Array(6).fill(''));
+      inputRefs.current[0]?.focus();
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const res = await userService.resendUserOtp(userId);
+      toast.success('A new OTP has been sent.');
+      setSecondsLeft(res.data.expiresInSeconds || 300);
+      setDigits(new Array(6).fill(''));
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to resend OTP');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const inputStyle = { width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+      <div style={{ background: 'white', borderRadius: '12px', padding: '28px', maxWidth: '420px', width: '100%' }}>
+        <h2 style={{ marginBottom: '8px', color: '#1e293b' }}>Verify New Account</h2>
+        <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '20px' }}>
+          User ID: <strong>{userId}</strong><br />
+          A 6-digit OTP was sent to <strong>{email}</strong>. Enter it below once the user (or you) receives it.
+        </p>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
+          {digits.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => (inputRefs.current[i] = el)}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleDigitChange(i, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(i, e)}
+              style={{ width: '44px', height: '52px', textAlign: 'center', fontSize: '20px', fontWeight: 600, border: '1px solid #ddd', borderRadius: '8px' }}
+            />
+          ))}
+        </div>
+
+        <p style={{ textAlign: 'center', fontSize: '13px', color: secondsLeft > 0 ? '#64748b' : '#ef4444', marginBottom: '20px' }}>
+          {secondsLeft > 0 ? `OTP expires in: ${formatTime(secondsLeft)}` : 'OTP expired — please resend'}
+        </p>
+
+        <button
+          onClick={handleVerify}
+          disabled={verifying}
+          style={{ width: '100%', padding: '12px', background: verifying ? '#93c5fd' : '#2563eb', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: verifying ? 'not-allowed' : 'pointer', marginBottom: '12px' }}
+        >
+          {verifying ? 'Verifying...' : 'Verify Account'}
+        </button>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={handleResend} disabled={resending} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: resending ? 'not-allowed' : 'pointer', fontSize: '13px' }}>
+            {resending ? 'Sending...' : "Didn't receive it? Resend OTP"}
+          </button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '13px' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const Users = () => {
@@ -58,6 +175,7 @@ const Users = () => {
   const [permModalUser, setPermModalUser] = useState(null);
   const [selectedPerms, setSelectedPerms] = useState([]);
   const [savingPerms, setSavingPerms] = useState(false);
+  const [verificationModal, setVerificationModal] = useState(null); // { userId, email }
 
   const normalizeTeams = (value) => {
     if (Array.isArray(value)) {
@@ -114,18 +232,23 @@ const Users = () => {
   };
 
   // --- Create ---
- const handleCreateUser = async () => {
+const handleCreateUser = async () => {
   if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password || !createForm.phone.trim()) {
     toast.error('Please fill in all required fields');
     return;
   }
   setCreating(true);
   try {
-    const payload = {
-      ...createForm,
-      teamIds: createForm.teamIds ? [createForm.teamIds] : [],
-    };
-    const res = await userService.createUser(payload);
+    const res = await userService.createUser(createForm);
+    const { data, message } = res.data;
+    toast.success(message);
+    setShowCreateModal(false);
+    setCreateForm(emptyCreateForm);
+    fetchUsers();
+
+    // Open the verification screen immediately, right inside this page
+    setVerificationModal({ userId: data.userId, email: data.email });
+  } catch (error) {
     toast.error(error?.response?.data?.message || 'Unable to create user');
   } finally {
     setCreating(false);
@@ -392,6 +515,20 @@ const Users = () => {
                               <button onClick={() => openRoleModal(u)} title="Assign role" style={actionBtn('#ede9fe', '#7c3aed')}><FaUserShield size={11} /></button>
                               <button onClick={() => openPermModal(u)} title="Assign permissions" style={actionBtn('#fef3c7', '#d97706')}><FaShieldAlt size={11} /></button>
                               <button onClick={() => setPasswordModalUser(u)} title="Reset password" style={actionBtn('#e0e7ff', '#4f46e5')}><FaKey size={11} /></button>
+
+                              {u.status === 'PENDING_VERIFICATION' && (
+                                <button
+                                  onClick={() => {
+                                    const url = `${window.location.origin}/verify-user?userId=${u.userId}`;
+                                    navigator.clipboard.writeText(url);
+                                    toast.success('Verification link copied!');
+                                  }}
+                                  title="Copy verification link"
+                                  style={actionBtn('#ede9fe', '#7c3aed')}
+                                >
+                                  <FaLink size={11} />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleSoftDelete(u)}
                                 disabled={u._id === currentUser?.id}
@@ -421,6 +558,8 @@ const Users = () => {
           <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages} style={pagerBtn(page === pages)}>Next</button>
         </div>
       )}
+
+      
 
       {/* Create User Modal */}
       {showCreateModal && (
@@ -468,6 +607,18 @@ const Users = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {verificationModal && (
+        <VerifyUserModal
+          userId={verificationModal.userId}
+          email={verificationModal.email}
+          onClose={() => setVerificationModal(null)}
+          onVerified={() => {
+            setVerificationModal(null);
+            fetchUsers();
+          }}
+        />
       )}
 
       {/* Edit User Modal */}

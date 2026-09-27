@@ -13,6 +13,10 @@ const register = async (req, res) => {
   try {
     const { name, email, password, phone, role, department } = req.body;
 
+    if (role === 'auditor') {
+      return res.status(403).json({ success: false, message: 'Auditor accounts must be created by an administrator.' });
+    }
+
     // Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {

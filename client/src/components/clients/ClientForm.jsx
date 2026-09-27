@@ -6,6 +6,7 @@ const emptyForm = {
   company: '',
   email: '',
   phone: '',
+  source: 'other',
   status: 'lead',
   projectValue: '',
   notes: '',
@@ -25,6 +26,7 @@ const ClientForm = ({ initialData, onSubmit, onCancel, saving, submitLabel = 'Sa
         company: initialData.company || '',
         email: initialData.email || '',
         phone: initialData.phone || '',
+        source: initialData.source || 'other',
         status: initialData.status || 'lead',
         projectValue: initialData.projectValue ?? '',
         notes: initialData.notes || '',
@@ -42,11 +44,21 @@ const ClientForm = ({ initialData, onSubmit, onCancel, saving, submitLabel = 'Sa
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const phone = formData.phone.replace(/\D/g, '');
+    if (!phone && !formData.email.trim()) {
+      window.alert('Enter a phone number or email address.');
+      return;
+    }
+    if (phone && (phone.length < 7 || phone.length > 15)) {
+      window.alert('Phone number must contain between 7 and 15 digits.');
+      return;
+    }
     const payload = {
       name: formData.name,
-      company: formData.company,
+      company: formData.company || formData.name,
       email: formData.email,
-      phone: formData.phone,
+      phone,
+      source: formData.source,
       status: formData.status,
       projectValue: Number(formData.projectValue) || 0,
       notes: formData.notes,
@@ -78,18 +90,25 @@ const ClientForm = ({ initialData, onSubmit, onCancel, saving, submitLabel = 'Sa
         </div>
 
         <div>
-          <label style={labelStyle}>Company *</label>
-          <input type="text" name="company" value={formData.company} onChange={handleChange} required style={inputStyle} />
+          <label style={labelStyle}>Company</label>
+          <input type="text" name="company" value={formData.company} onChange={handleChange} style={inputStyle} />
         </div>
 
         <div>
-          <label style={labelStyle}>Email *</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} required style={inputStyle} />
+          <label style={labelStyle}>Email</label>
+          <input type="email" name="email" value={formData.email} onChange={handleChange} style={inputStyle} />
         </div>
 
         <div>
-          <label style={labelStyle}>Phone *</label>
-          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required style={inputStyle} />
+          <label style={labelStyle}>Phone</label>
+          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} style={inputStyle} />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Source *</label>
+          <select name="source" value={formData.source} onChange={handleChange} required style={inputStyle}>
+            {['website', 'referral', 'social_media', 'email', 'call', 'other'].map((source) => <option key={source} value={source}>{source.replace('_', ' ')}</option>)}
+          </select>
         </div>
 
         <div>

@@ -1,11 +1,16 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaFileExcel, FaFileCsv, FaSpinner } from 'react-icons/fa';
 import importService from '../../services/importService';
+import teamService from '../../services/teamService';
+import { useAuth } from '../../hooks/useAuth';
 
 const AUTO_MAP_ALIASES = {
   Name: ['name', 'Name', 'lead name', 'client name', 'customer name', 'full name'],
+  Contact: ['contact', 'Contact', 'contact no', 'contact number', 'phone or email'],
+  Address: ['address', 'Address', 'location'],
+  Source: ['source', 'Source', 'lead source'],
   Company: ['Company', 'company', 'company name', 'organization'],
   Email: ['email', 'Email', 'email address', 'e-mail'],
   Phone: ['phone', 'Phone', 'phone number', 'mobile', 'mobile number', 'contact number'],
@@ -16,7 +21,7 @@ const AUTO_MAP_ALIASES = {
   assignedTo: ['assigned to', 'assigned user', 'assigned employee', 'owner'],
 };
 
-const REQUIRED_FIELDS = ['Name', 'Phone', 'Company', 'Email', 'Status'];
+const REQUIRED_FIELDS = ['Name', 'Source'];
 
 function buildAutoMapping(detectedColumns) {
   const mapping = {};
@@ -33,12 +38,24 @@ function buildAutoMapping(detectedColumns) {
 }
 
 const QuickLeadUpload = ({ onImported }) => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
   const [uploading, setUploading] = useState(false);
   const [pendingImport, setPendingImport] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [teams, setTeams] = useState([]);
+  const [teamId, setTeamId] = useState('');
+
+  useEffect(() => {
+    if (!['admin', 'manager'].includes(user?.role)) return;
+    teamService.getTeams().then((response) => {
+      const list = response.data?.data || [];
+      setTeams(list);
+      setTeamId((current) => current || list[0]?._id || '');
+    }).catch(() => toast.error('Unable to load teams for lead import'));
+  }, [user?.role]);
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
@@ -74,7 +91,8 @@ const QuickLeadUpload = ({ onImported }) => {
 
       const mapping = buildAutoMapping(data.detectedColumns);
       const mappedFields = new Set(Object.values(mapping));
-      const missingRequired = REQUIRED_FIELDS.filter((f) => !mappedFields.has(f));
+      const missingRequired = REQUIRED_FIELDS.filter((field) => !mappedFields.has(field));
+      if (!['Contact', 'Phone', 'Email'].some((field) => mappedFields.has(field))) missingRequired.push('Contact (phone or email)');
 
       if (missingRequired.length > 0) {
         toast.info(
@@ -109,6 +127,10 @@ const QuickLeadUpload = ({ onImported }) => {
 
   const handleConfirmImport = async () => {
     if (!pendingImport) return;
+    if (['admin', 'manager'].includes(user?.role) && !teamId) {
+      toast.error('Select a team before importing leads.');
+      return;
+    }
     setImporting(true);
     try {
       const response = await importService.process({
@@ -119,6 +141,7 @@ const QuickLeadUpload = ({ onImported }) => {
         duplicateStrategy: 'skip',
         module: 'leads',
         fileName: pendingImport.fileName,
+        teamId: teamId || undefined,
       });
       const result = response.data.data;
 
@@ -141,31 +164,30 @@ const QuickLeadUpload = ({ onImported }) => {
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
-      <button
-        onClick={handleButtonClick}
-        disabled={uploading}
-        style={{
-          padding: '10px 20px',
-          background: '#16a34a',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: uploading ? 'not-allowed' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        {uploading ? (
-          <>
-            <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> Processing...
-          </>
-        ) : (
-          <>
-            <FaFileExcel /> Upload Leads File
-          </>
-        )}
-      </button>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {['admin', 'manager'].includes(user?.role) && <select aria-label="Import team" value={teamId} onChange={(event) => setTeamId(event.target.value)} style={{ padding: '10px 12px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6 }}>
+          <option value="">Select team</option>
+          {teams.map((team) => <option key={team._id} value={team._id}>{team.name}</option>)}
+        </select>}
+        <button
+          type="button"
+          onClick={handleButtonClick}
+          disabled={uploading}
+          style={{
+            padding: '10px 20px',
+            background: '#176b55',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: uploading ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          {uploading ? <><FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : <><FaFileExcel /> Upload Leads File</>}
+        </button>
+      </div>
 
       {pendingImport && (
         <div style={{

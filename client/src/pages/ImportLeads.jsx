@@ -1,11 +1,13 @@
 // client/src/pages/ImportLeads.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaArrowLeft, FaFileExcel } from 'react-icons/fa';
 import FileUploadZone from '../components/import/FileUploadZone';
 import ColumnMapper from '../components/import/ColumnMapper';
 import ImportPreviewTable from '../components/import/ImportPreviewTable';
 import ImportSummary from '../components/import/ImportSummary';
 import importService from '../services/importService';
+import teamService from '../services/teamService';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-toastify';
 
 const STEPS = {
@@ -29,6 +31,7 @@ const initialUploadState = {
 };
 
 const ImportLeads = () => {
+  const { user } = useAuth();
   const [step, setStep] = useState(STEPS.UPLOAD);
   const [uploading, setUploading] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -39,6 +42,17 @@ const ImportLeads = () => {
   const [previewData, setPreviewData] = useState(null);
   const [duplicateStrategy, setDuplicateStrategy] = useState('skip');
   const [summary, setSummary] = useState(null);
+  const [teams, setTeams] = useState([]);
+  const [teamId, setTeamId] = useState('');
+
+  useEffect(() => {
+    if (!['admin', 'manager'].includes(user?.role)) return;
+    teamService.getTeams().then((response) => {
+      const list = response.data?.data || [];
+      setTeams(list);
+      setTeamId((current) => current || list[0]?._id || '');
+    }).catch(() => toast.error('Unable to load teams for lead import'));
+  }, [user?.role]);
 
   const resetAll = () => {
     setStep(STEPS.UPLOAD);
@@ -61,13 +75,15 @@ const ImportLeads = () => {
         : await importService.uploadCSV(file);
 
       const data = response.data.data;
+      const fieldsResponse = await importService.getCrmFields();
+      const crmFields = fieldsResponse.data?.data || [];
 
       setUploadState({
         tempFilePath: data.tempFilePath,
         fileType: data.fileType,
         fileName: data.fileName,
         detectedColumns: data.detectedColumns,
-        crmFields: data.crmFields,
+        crmFields,
         sheetNames: data.sheetNames || [],
         activeSheet: data.activeSheet || null,
       });
@@ -132,12 +148,13 @@ const ImportLeads = () => {
   const requiredFieldsMapped = () => {
     const requiredKeys = uploadState.crmFields.filter((f) => f.required).map((f) => f.key);
     const mappedKeys = new Set(Object.values(mapping).filter(Boolean));
-    return requiredKeys.every((key) => mappedKeys.has(key));
+    return requiredKeys.every((key) => mappedKeys.has(key))
+      && ['Contact', 'Phone', 'Email'].some((key) => mappedKeys.has(key));
   };
 
   const handleContinueToPreview = async () => {
     if (!requiredFieldsMapped()) {
-      toast.error('Please map all required fields before continuing');
+      toast.error('Map Name, Source, and at least one Contact, Phone, or Email column before continuing.');
       return;
     }
 
@@ -166,7 +183,7 @@ const ImportLeads = () => {
         })),
       ];
 
-      setPreviewData({ ...data, rows });
+      setPreviewData({ ...data, rows: data.rows || rows });
       setStep(STEPS.PREVIEW);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to generate preview');
@@ -177,6 +194,10 @@ const ImportLeads = () => {
 
   // --- Step 4: Preview -> Process import ---
   const handleImport = async () => {
+    if (['admin', 'manager'].includes(user?.role) && !teamId) {
+      toast.error('Select a team before importing leads.');
+      return;
+    }
     setImporting(true);
     try {
       const response = await importService.process({
@@ -187,6 +208,7 @@ const ImportLeads = () => {
         duplicateStrategy,
         module: MODULE,
         fileName: uploadState.fileName,
+        teamId: teamId || undefined,
       });
       const data = response.data.data;
 
@@ -202,10 +224,20 @@ const ImportLeads = () => {
     }
   };
 
-  const handleDownloadErrorReport = () => {
+  const handleDownloadErrorReport = async () => {
     const id = summary?.importLogId;
     if (!id) return;
-    window.open(importService.getErrorReportUrl(id), '_blank');
+    try {
+      const response = await importService.downloadErrorReport(id);
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `import-errors-${id}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to download error report');
+    }
   };
 
   return (
@@ -224,7 +256,10 @@ const ImportLeads = () => {
       </div>
 
       {step === STEPS.UPLOAD && (
-        <FileUploadZone onFileSelected={handleFileSelected} uploading={uploading} />
+        <>
+          {['admin', 'manager'].includes(user?.role) && <label style={{ display: 'block', marginBottom: 14, color: '#334155' }}>Team<select aria-label="Import team" value={teamId} onChange={(event) => setTeamId(event.target.value)} style={{ display: 'block', width: '100%', maxWidth: 420, padding: 10, marginTop: 6, border: '1px solid #cbd5e1', borderRadius: 5 }}><option value="">Select team</option>{teams.map((team) => <option key={team._id} value={team._id}>{team.name}</option>)}</select></label>}
+          <FileUploadZone onFileSelected={handleFileSelected} uploading={uploading} />
+        </>
       )}
 
       {step === STEPS.SELECT_SHEET && (

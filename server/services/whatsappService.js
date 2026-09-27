@@ -26,7 +26,7 @@ function initWhatsApp() {
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
       headless: true,
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // use your actual path from `where.exe chrome`
+      executablePath: process.env.WHATSAPP_CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     },
   });

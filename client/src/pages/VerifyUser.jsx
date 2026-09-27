@@ -87,7 +87,7 @@ const VerifyUser = () => {
       <div style={{ background: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', maxWidth: '420px', width: '100%', textAlign: 'center' }}>
         <h1 style={{ fontSize: '22px', color: '#16a34a' }}>✅ Account Verified!</h1>
         <p style={{ color: '#64748b', margin: '12px 0' }}>User ID: <strong>{userIdInput}</strong></p>
-        <p style={{ color: '#64748b', marginBottom: '24px' }}>Your BuildFlow CRM account is now active.</p>
+        <p style={{ color: '#64748b', marginBottom: '24px' }}>Your BuildTrack Pro CRM account is now active.</p>
         <button
           onClick={() => navigate('/login')}
           style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600, cursor: 'pointer' }}

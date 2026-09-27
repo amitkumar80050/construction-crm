@@ -35,6 +35,14 @@ import TeamManagement from './pages/admin/TeamManagement';
 import TeamChat from './pages/TeamChat';
 import WhatsApp from './pages/WhatsApp';
 import MyTeam from './pages/MyTeam';
+import ManagerDashboard from './pages/manager/ManagerDashboard';
+import TelecallerDashboard from './pages/TelecallerDashboard';
+import SalesExecutiveDashboard from './pages/SalesExecutiveDashboard';
+import ManagerLeads from './pages/manager/ManagerLeads';
+import ManagerTeam from './pages/manager/ManagerTeam';
+import MarkAttendance from './pages/MarkAttendance';
+import AttendanceApprovals from './pages/manager/AttendanceApprovals';
+
 
 
 
@@ -48,6 +56,8 @@ import ImportData from './pages/ImportData';
 import EditClient from './pages/EditClient';
 import VerifyOTP from './pages/VerifyOTP';
 import VerifyUser from './pages/VerifyUser';
+import MyVisits from './pages/MyVisits';
+import VisitDetail from './pages/VisitDetail';
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
@@ -62,14 +72,25 @@ function AppContent() {
           <Route path="/verify-user" element={<VerifyUser />} />
         </Route>
 
+        <Route path="/my-visits" element={<MyVisits />} />
+        <Route path="/visits/:id" element={<VisitDetail />} />
+
+
         {/* Protected Routes */}
         <Route element={<PrivateRoute />}>
           <Route element={user?.role === 'admin' ? <AdminLayout /> : <UserLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={user?.role === 'auditor' ? <MyLogs /> : user?.role === 'manager' ? <ManagerDashboard /> : user?.role === 'telecaller' ? <TelecallerDashboard /> : user?.role === 'sales executer' ? <SalesExecutiveDashboard /> : <Dashboard />} />
+            <Route path="/site-visits" element={user?.role === 'sales executer' ? <SalesExecutiveDashboard /> : <Navigate to="/dashboard" />} />
+            <Route path="/manager-dashboard" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerDashboard /> : <Navigate to="/dashboard" />} />
+            <Route path="/manager/team" element={user?.role === 'manager' ? <ManagerTeam /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/manager/leads" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerLeads /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/import" element={['admin', 'manager', 'telecaller'].includes(user?.role) ? <ImportData /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/attendance" element={<MarkAttendance />} />
+            <Route path="/manager/attendance" element={user?.role === 'manager' || user?.role === 'admin' ? <AttendanceApprovals /> : <Navigate to="/dashboard" replace />} />
             <Route path="/clients" element={<Clients />} />
             <Route path="/clients/:id" element={<ClientProfile />} />
             <Route path="/clients/:id/edit" element={<EditClient />} />
-            <Route path="/clients/new" element={<AddClient />} />
+            <Route path="/clients/new" element={['admin', 'manager', 'telecaller'].includes(user?.role) ? <AddClient /> : <Navigate to="/clients" replace />} />
             <Route path="/remarks" element={<Remarks />} />
             <Route path="/stages" element={<Stages />} />
             <Route path="/reminders" element={<Reminders />} />
@@ -85,7 +106,6 @@ function AppContent() {
             {/* Admin only routes */}
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<Users />} />
-              <Route path="/import" element={<ImportData />} />
               <Route path="/teams" element={<TeamManagement />} />
               <Route path="/teams/:teamId/chat" element={<TeamChat />} />
             </Route>

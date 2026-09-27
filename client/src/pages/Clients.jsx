@@ -7,8 +7,11 @@ import LatestRemark from '../components/remarks/LatestRemark';
 import CurrentStage from '../components/stages/CurrentStage';
 import UpcomingReminder from '../components/reminders/UpcomingReminder';
 import QuickLeadUpload from '../components/clients/QuickLeadUpload';
+import { useAuth } from '../hooks/useAuth';
 
 const Clients = () => {
+  const { user } = useAuth();
+  const canCreateLeads = ['admin', 'manager', 'telecaller'].includes(user?.role);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -66,8 +69,9 @@ const Clients = () => {
 
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase());
+      (client.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (client.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (client.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || client.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -84,6 +88,7 @@ const Clients = () => {
         gap: '16px'
       }}>
         <div style={{ display: 'flex', gap: '10px' }}>
+          {canCreateLeads && <>
           <QuickLeadUpload onImported={fetchClients} />
           <Link
             to="/import"
@@ -120,6 +125,7 @@ const Clients = () => {
           >
             <FaPlus /> Add Leads
           </Link>
+          </>}
         </div>
       </div>
 
