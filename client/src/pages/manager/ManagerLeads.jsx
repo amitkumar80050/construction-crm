@@ -34,7 +34,12 @@ const ManagerLeads = () => {
   useEffect(() => { load(); }, []);
 
   const openLead = async (lead) => {
-    setLeadDetail((await leadService.getLead(lead._id)).data?.data);
+    try {
+      const res = await leadService.getLead(lead._id);
+      setLeadDetail(res.data?.data);
+    } catch (err) {
+      toast.error('Unable to load lead details');
+    }
   };
 
   const reassign = (lead) => {

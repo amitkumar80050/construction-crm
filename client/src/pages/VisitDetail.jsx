@@ -27,9 +27,9 @@ const VisitDetail = () => {
 
   return (
     <div style={{ padding: '24px', maxWidth: '500px' }}>
-      <h1 style={{ fontSize: '22px' }}>{visit.lead.name}</h1>
-      <p style={{ color: '#64748b' }}>{visit.lead.phone}</p>
-      <p style={{ color: '#64748b' }}>{visit.lead.address?.street}</p>
+      <h1 style={{ fontSize: '22px' }}>{visit.lead?.name || 'Lead Details'}</h1>
+      <p style={{ color: '#64748b' }}>{visit.lead?.phone || '-'}</p>
+      <p style={{ color: '#64748b' }}>{visit.lead?.address?.street || visit.address || '-'}</p>
       <p>Scheduled: {new Date(visit.scheduledAt).toLocaleString()}</p>
       <p>Status: <strong>{normalizedStatus}</strong></p>
 

@@ -21,7 +21,7 @@ const Sidebar = ({ pinned, onTogglePin }) => {
     { path: '/clients/new', icon: FaUsers, label: 'Add Lead' },
   ];
   const salesExecutiveItems = [
-    { path: '/my-visits', icon: FaCompass, label: 'My Site Visits' },
+    { path: '/my-visits', icon: FaMapMarkerAlt, label: 'Visits Calendar' },
   ];
 
   const navItems = isAuditor ? [

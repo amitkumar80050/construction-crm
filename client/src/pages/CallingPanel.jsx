@@ -6,6 +6,8 @@ import {
   FaVideoSlash, FaMicrophone, FaMicrophoneSlash,
   FaUsers, FaArrowLeft, FaArrowRight
 } from 'react-icons/fa';
+import clientService from '../services/clientService';
+import leadService from '../services/leadService';
 
 const CallingPanel = () => {
   const [calls, setCalls] = useState([
@@ -48,12 +50,34 @@ const CallingPanel = () => {
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
 
-  const clients = [
+  const defaultClients = [
     { id: 1, name: 'Amit yadav', phone: '9169137366', email: 'amityadav50800@gmail.com' },
     { id: 2, name: 'XYZ Builders', phone: '+1 234 567 8901', email: 'info@xyz.com' },
     { id: 3, name: 'PQR Developers', phone: '+1 234 567 8902', email: 'hello@pgr.com' },
     { id: 4, name: 'LMN Infrastructure', phone: '+1 234 567 8903', email: 'info@lmn.com' }
   ];
+
+  const [realClients, setRealClients] = useState([]);
+
+  useEffect(() => {
+    clientService.getClients({ limit: 100 })
+      .then(res => {
+        const data = res.data?.data || res.data || [];
+        if (Array.isArray(data) && data.length) {
+          setRealClients(data.map(c => ({
+            id: c._id,
+            _id: c._id,
+            name: c.name || c.company || 'Unknown Client',
+            phone: c.phone || '',
+            email: c.email || '',
+            company: c.company || ''
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const clients = realClients.length > 0 ? realClients : defaultClients;
 
   useEffect(() => {
     let timer;
@@ -74,10 +98,10 @@ const CallingPanel = () => {
           setIncomingCall(randomClient);
           toast.info(`📞 Incoming call from ${randomClient.name}`);
         }
-      }, 30000);
+      }, 45000);
       return () => clearInterval(interval);
     }
-  }, [isCallActive, selectedClient]);
+  }, [isCallActive, selectedClient, clients]);
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -159,6 +183,9 @@ const CallingPanel = () => {
       };
       setCalls([newCall, ...calls]);
       setCallHistory([newCall, ...callHistory]);
+      if (selectedClient._id && callNotes.trim()) {
+        leadService.addNote(selectedClient._id, callNotes.trim()).catch(() => {});
+      }
       toast.success(`Call with ${selectedClient.name} completed!`);
     }
     setSelectedClient(null);
