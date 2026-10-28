@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FaLinkedin, FaTwitter, FaGithub, FaFacebook, FaInstagram, FaYoutube,
@@ -74,7 +74,7 @@ const Footer = () => {
 
   const navLinks = [
     { to: "/dashboard", label: "Dashboard" },
-    { to: "/clients", label: "Leads" },
+    { to: "/Leads", label: "Leads" },
     { to: "/users", label: "Users", adminOnly: true },
     { to: "/analytics", label: "Analytics" },
     { to: "/reminders", label: "Reminders" },
@@ -84,7 +84,7 @@ const Footer = () => {
   const supportLinks = [
     { href: "#", label: "Documentation" },
     { href: "#", label: "Help Center" },
-    { href: "mailto:support@buildtrackpro.com", label: "Contact Support" },
+    { href: "Info@techbuzzsolution.com", label: "Contact Support" },
     { href: "#", label: "FAQ" },
     { href: "#", label: "Report a Bug" },
     { href: "#", label: "Feature Request" }
@@ -107,11 +107,11 @@ const Footer = () => {
             <div className="col-6 col-md-3">
               <div className="d-flex align-items-center gap-2 mb-2">
                 <span style={{ fontSize: "22px" }}>{"\uD83C\uDFD7\uFE0F"}</span>
-                <strong style={{ color: "#1e293b" }}>BuildTrack Pro <br />Amit kumar</strong>
+                <strong style={{ color: "#1e293b" }}>SUNGRID ENERGY CRM</strong>
               </div>
-              <p className="text-muted mb-1" style={{ fontSize: "12px" }}>Version {APP_VERSION}</p>
+              <p className="text-muted mb-1" style={{ fontSize: "12px" }}>Enterprise Energy CRM & Field Ops</p>
               <p className="text-muted mb-0" style={{ fontSize: "12px" }}>
-                (c) {new Date().getFullYear()} BuildTrack Pro.<br />All rights reserved.
+                &copy; {new Date().getFullYear()} SUNGRID ENERGY CRM.<br />All rights reserved.
               </p>
             </div>
 
@@ -145,18 +145,18 @@ const Footer = () => {
               <strong className="d-block mb-2" style={{ color: "#1e293b", fontSize: "13px" }}>Contact</strong>
               <ul className="list-unstyled mb-0 d-grid gap-2" style={{ fontSize: "13px" }}>
                 <li>
-                  <a href="mailto:support@buildtrackpro.com" className="footer-link d-flex align-items-center gap-2">
-                    <FaEnvelope size={11} /> amityadav50800@gmail.com
+                  <a href="mailto:[EMAIL_ADDRESS]" className="footer-link d-flex align-items-center gap-2">
+                    <FaEnvelope size={11} /> Info@techbuzzsolution.com
                   </a>
                 </li>
                 <li>
-                  <a href="tel:+911234567890" className="footer-link d-flex align-items-center gap-2">
-                    <FaPhone size={11} /> +91 9169137366
+                  <a href="tel:+918005484894" className="footer-link d-flex align-items-center gap-2">
+                    <FaPhone size={11} /> +91 8005484894
                   </a>
                 </li>
                 <li>
-                  <a href="https://buildtrackpro.com" target="_blank" rel="noreferrer" className="footer-link d-flex align-items-center gap-2">
-                    <FaGlobe size={11} /> buildtrackpro.com
+                  <a href="https://www.techbuzzsolution.com " target="_blank" rel="noreferrer" className="footer-link d-flex align-items-center gap-2">
+                    <FaGlobe size={11} /> www.techbuzzsolution.com
                   </a>
                 </li>
                 <li className="d-flex align-items-start gap-2 text-muted">
@@ -189,7 +189,7 @@ const Footer = () => {
         <div className="border-top py-2 px-4" style={{ background: "#f8fafc" }}>
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-2" style={{ fontSize: "12px" }}>
             <div className="d-flex flex-wrap align-items-center gap-3 text-muted">
-              <span>(c) {new Date().getFullYear()} BuildTrack Pro</span>
+              <span>(c) {new Date().getFullYear()}SUNGRID ENERGY CRM</span>
               <span className="d-none d-md-inline">v{APP_VERSION}</span>
 
               <span className="d-flex align-items-center gap-1" title={serverStatus === "online" ? "Server & database reachable" : "Server unreachable"}>

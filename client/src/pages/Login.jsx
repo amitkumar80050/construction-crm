@@ -3,15 +3,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
-    email: 'admin@example.com',
-    password: 'password123',
+    email: '',
+    password: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -40,54 +40,30 @@ const Login = () => {
     }
   };
 
-  const oauthBtnStyle = (bg) => ({
-    width: '100%',
-    padding: '10px',
-    background: bg,
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '10px',
-    marginBottom: '10px'
-  });
-
   return (
     <div style={{
       background: 'white',
-      padding: '40px',
-      borderRadius: '12px',
-      boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-      maxWidth: '420px',
+      padding: '36px',
+      borderRadius: '16px',
+      boxShadow: '0 20px 40px -15px rgba(15,23,42,0.15), 0 0 0 1px rgba(15,23,42,0.05)',
+      maxWidth: '460px',
       width: '100%'
     }}>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', color: '#1e293b' }}>🏗️ BuildTrack Pro CRM</h1>
-        <p style={{ color: '#64748b', marginTop: '8px' }}>Log in to your account</p>
+        <div style={{ fontSize: '32px', marginBottom: '4px' }}>🏗️</div>
+        <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+          BuildTrack <span style={{ color: '#2563eb' }}>Pro</span> CRM
+        </h1>
+        <p style={{ color: '#64748b', fontSize: '13px', marginTop: '6px' }}>
+          Enterprise Construction Multi-Role CRM & Field Operations
+        </p>
       </div>
 
       {oauthError && (
         <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', textAlign: 'center' }}>
-          {errorMessages[oauthError] || 'LogIn failed. Please try again.'}
+          {errorMessages[oauthError] || 'Login failed. Please try again.'}
         </div>
       )}
-
-    
-      
-      {/* OAuth buttons */}
-      
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '20px 0', color: '#94a3b8', fontSize: '12px' }}>
-        <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-        LOG IN WITH EMAIL
-        <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-      </div>
-
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#1e293b' }}>

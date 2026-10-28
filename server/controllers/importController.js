@@ -169,7 +169,14 @@ const process_ = async (req, res) => {
       }
     }
 
-    const fileSize = fs.statSync(tempFilePath).size;
+    let fileSize = 0;
+    try {
+      if (fs.existsSync(tempFilePath)) {
+        fileSize = fs.statSync(tempFilePath).size;
+      }
+    } catch (e) {
+      fileSize = 0;
+    }
     const startedAt = Date.now();
 
     const result = await importService.processImport({
@@ -187,42 +194,47 @@ const process_ = async (req, res) => {
       user: req.user.id,
       module: 'leads',
       fileName: fileName || path.basename(tempFilePath),
-      fileSize,
+      fileSize: fileSize || 1,
       fileType,
       ipAddress: req.ip,
-      totalRecords: result.totalUploaded,
-      validRecords: Math.max(0, result.totalUploaded - result.failed - result.duplicate),
-      invalidRecords: result.failed,
-      duplicateRecords: result.duplicate,
-      importedRecords: result.imported,
-      updatedRecords: result.updated,
-      skippedRecords: result.skipped,
-      failedRecords: result.failed,
+      totalRecords: result.totalUploaded || 0,
+      validRecords: Math.max(0, (result.totalUploaded || 0) - (result.failed || 0) - (result.duplicate || 0)),
+      invalidRecords: result.failed || 0,
+      duplicateRecords: result.duplicate || 0,
+      importedRecords: result.imported || 0,
+      updatedRecords: result.updated || 0,
+      skippedRecords: result.skipped || 0,
+      failedRecords: result.failed || 0,
       duplicateStrategy: duplicateStrategy || 'skip',
       status: 'completed',
-      errorReport: result.errorReport,
+      errorReport: result.errorReport || [],
       columnMapping,
       durationMs: Date.now() - startedAt,
     };
-    const importLog = await ImportLog.create(importLogData);
-    result.importLogId = importLog._id;
 
-    await Activity.create({
+    try {
+      const importLog = await ImportLog.create(importLogData);
+      result.importLogId = importLog._id;
+    } catch (logErr) {
+      console.error('Unable to create ImportLog:', logErr.message);
+    }
+
+    Activity.create({
       user: req.user.id,
       type: 'create',
-      module: 'client',
+      module: 'Lead',
       description: `Imported leads from "${fileName || 'file'}": ${result.imported} new, ${result.updated} updated, ${result.skipped} skipped, ${result.failed} failed`,
-    });
+    }).catch((actErr) => console.error('Unable to create Activity log:', actErr.message));
 
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    console.error(error);
+    console.error('Error during import process:', error);
     if (importLogData) {
       await ImportLog.create({ ...importLogData, status: 'failed' }).catch((logError) => {
         console.error('Unable to save failed import log:', logError.message);
       });
     }
-    res.status(500).json({ success: false, message: 'Import failed' });
+    res.status(500).json({ success: false, message: error.message || 'Import failed' });
   }
 };
 

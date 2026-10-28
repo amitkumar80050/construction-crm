@@ -5,8 +5,8 @@ const remarkService = {
     return await api.get('/remarks', { params });
   },
 
-  getRemarksByClient: async (clientId) => {
-    return await api.get(`/remarks/client/${clientId}`);
+  getRemarksByLead: async (LeadId) => {
+    return await api.get(`/remarks/Lead/${LeadId}`);
   },
 
   createRemark: async (data) => {

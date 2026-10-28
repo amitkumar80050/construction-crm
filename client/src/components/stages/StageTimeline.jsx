@@ -4,24 +4,24 @@ import { FaTimes, FaUser, FaCalendar, FaLayerGroup, FaArrowRight } from 'react-i
 import stageService from '../../services/stageService';
 import AddStage from './AddStage';
 
-const StageTimeline = ({ clientId, clientName, currentStage, isOpen, onClose, onStageMoved }) => {
+const StageTimeline = ({ LeadId, LeadName, currentStage, isOpen, onClose, onStageMoved }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showMoveForm, setShowMoveForm] = useState(false);
   const [current, setCurrent] = useState(currentStage);
 
   const fetchHistory = useCallback(async () => {
-    if (!clientId) return;
+    if (!LeadId) return;
     setLoading(true);
     try {
-      const res = await stageService.getClientStageHistory(clientId);
+      const res = await stageService.getLeadstageHistory(LeadId);
       setHistory(res.data?.data || []);
     } catch (error) {
       toast.error('Failed to load stage history');
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [LeadId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -31,11 +31,11 @@ const StageTimeline = ({ clientId, clientName, currentStage, isOpen, onClose, on
     }
   }, [isOpen, fetchHistory, currentStage]);
 
-  const handleMoved = (updatedClient) => {
+  const handleMoved = (updatedLead) => {
     setShowMoveForm(false);
-    setCurrent(updatedClient?.currentStage || current);
+    setCurrent(updatedLead?.currentStage || current);
     fetchHistory();
-    if (onStageMoved) onStageMoved(updatedClient);
+    if (onStageMoved) onStageMoved(updatedLead);
   };
 
   if (!isOpen) return null;
@@ -63,7 +63,7 @@ const StageTimeline = ({ clientId, clientName, currentStage, isOpen, onClose, on
         }}>
           <div>
             <h2 style={{ fontSize: '18px', color: '#1e293b', margin: 0 }}>Stage Timeline</h2>
-            {clientName && <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0' }}>{clientName}</p>}
+            {LeadName && <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0' }}>{LeadName}</p>}
           </div>
           <button
             onClick={onClose}
@@ -92,7 +92,7 @@ const StageTimeline = ({ clientId, clientName, currentStage, isOpen, onClose, on
 
           {showMoveForm ? (
             <AddStage
-              clientId={clientId}
+              LeadId={LeadId}
               currentStageId={current?._id}
               onMoved={handleMoved}
               onCancel={() => setShowMoveForm(false)}

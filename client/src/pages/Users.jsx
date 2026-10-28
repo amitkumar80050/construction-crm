@@ -8,7 +8,7 @@ import userService from '../services/userService';
 import teamService from '../services/teamService';
 import { useAuth } from '../hooks/useAuth';
 
-const ROLES = ['admin', 'auditor', 'manager', 'telecaller','sales executer'];
+const ROLES = ['admin', 'manager', 'telecaller','sales executer'];
 const PERMISSIONS = [
   'manage_leads', 'manage_remarks', 'manage_stages',
   'manage_reminders', 'manage_users', 'view_analytics',

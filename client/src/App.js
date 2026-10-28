@@ -17,9 +17,9 @@ import AuthLayout from './layouts/AuthLayout';
 import Login from './pages/Login';
 
 import Dashboard from './pages/Dashboard';
-import Clients from './pages/Clients';
-import ClientProfile from './pages/ClientProfile';
-import AddClient from './pages/AddClient';
+import Leads from './pages/Leads';
+import LeadProfile from './pages/LeadProfile';
+import AddLead from './pages/AddLead';
 import Remarks from './pages/Remarks';
 import Stages from './pages/Stages';
 import Reminders from './pages/Reminders';
@@ -42,8 +42,8 @@ import Attendance from './pages/Attendance';
 import AttendanceApproval from './pages/manager/AttendanceApproval';
 import TelecallerDashboard from './pages/TelecallerDashboard';
 import SalesExecutiveDashboard from './pages/SalesExecutiveDashboard';
-
-
+import SiteVisits from './pages/SiteVisits';
+import ExportData from './pages/ExportData';
 
 // Route Guards
 import PrivateRoute from './routes/PrivateRoute';
@@ -52,7 +52,7 @@ import AdminRoute from './routes/AdminRoute';
 // Hooks
 import { useAuth } from './hooks/useAuth';
 import ImportData from './pages/ImportData';
-import EditClient from './pages/EditClient';
+import EditLead from './pages/EditLead';
 import VerifyOTP from './pages/VerifyOTP';
 import VerifyUser from './pages/VerifyUser';
 import MyVisits from './pages/MyVisits';
@@ -75,19 +75,26 @@ function AppContent() {
         <Route element={<PrivateRoute />}>
           <Route element={user?.role === 'admin' ? <AdminLayout /> : <UserLayout />}>
             <Route path="/dashboard" element={user?.role === 'auditor' ? <MyLogs /> : user?.role === 'manager' ? <ManagerDashboard /> : user?.role === 'telecaller' ? <TelecallerDashboard /> : user?.role === 'sales executer' ? <SalesExecutiveDashboard /> : <Dashboard />} />
-            <Route path="/site-visits" element={user?.role === 'sales executer' ? <SalesExecutiveDashboard /> : user?.role === 'manager' || user?.role === 'admin' ? <ManagerDashboard /> : <Navigate to="/dashboard" />} />
-            <Route path="/my-visits" element={user?.role === 'sales executer' ? <MyVisits /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/visits/:id" element={user?.role === 'sales executer' ? <VisitDetail /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/site-visits" element={<SiteVisits />} />
+            <Route path="/my-visits" element={['sales executer', 'manager', 'admin'].includes(user?.role) ? <MyVisits /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/visits/:id" element={<VisitDetail />} />
             <Route path="/manager-dashboard" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerDashboard /> : <Navigate to="/dashboard" />} />
-            <Route path="/manager/team" element={user?.role === 'manager' ? <ManagerTeam /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/manager/team" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerTeam /> : <Navigate to="/dashboard" replace />} />
             <Route path="/manager/leads" element={user?.role === 'manager' || user?.role === 'admin' ? <ManagerLeads /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/import" element={['admin', 'manager', 'telecaller'].includes(user?.role) ? <ImportData /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/import" element={['admin', 'manager'].includes(user?.role) ? <ImportData /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/export" element={['admin', 'manager'].includes(user?.role) ? <ExportData /> : <Navigate to="/dashboard" replace />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/manager/attendance" element={user?.role === 'manager' || user?.role === 'admin' ? <AttendanceApproval /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/clients/:id" element={<ClientProfile />} />
-            <Route path="/clients/:id/edit" element={<EditClient />} />
-            <Route path="/clients/new" element={['admin', 'manager', 'telecaller'].includes(user?.role) ? <AddClient /> : <Navigate to="/clients" replace />} />
+            <Route path="/Leads" element={<Leads />} />
+            <Route path="/Leads/:id" element={<LeadProfile />} />
+            <Route path="/Leads/:id/edit" element={<EditLead />} />
+            <Route path="/Leads/new" element={['admin', 'manager'].includes(user?.role) ? <AddLead /> : <Navigate to="/Leads" replace />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/leads/:id" element={<LeadProfile />} />
+            <Route path="/leads/:id/edit" element={<EditLead />} />
+            <Route path="/leads/new" element={['admin', 'manager'].includes(user?.role) ? <AddLead /> : <Navigate to="/Leads" replace />} />
+            <Route path="/clients" element={<Navigate to="/Leads" replace />} />
+            <Route path="/clients/*" element={<Navigate to="/Leads" replace />} />
             <Route path="/remarks" element={<Remarks />} />
             <Route path="/stages" element={<Stages />} />
             <Route path="/reminders" element={<Reminders />} />
@@ -97,15 +104,15 @@ function AppContent() {
             <Route path="/whatsapp" element={<WhatsApp />} />
             <Route path="/my-team" element={<MyTeam />} />
             <Route path="/my-team/:teamId" element={<TeamChat />} />
+            <Route path="/teams/:teamId/chat" element={<TeamChat />} />
             <Route path="/logs" element={<MyLogs />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
-            
+
             {/* Admin only routes */}
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<Users />} />
               <Route path="/teams" element={<TeamManagement />} />
-              <Route path="/teams/:teamId/chat" element={<TeamChat />} />
             </Route>
           </Route>
         </Route>

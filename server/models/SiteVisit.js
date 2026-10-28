@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const siteVisitSchema = new mongoose.Schema({
-  lead: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true, index: true },
-  client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', index: true },
+  lead: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', required: true, index: true },
+  Lead: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', index: true },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   scheduledAt: { type: Date, required: true },
   status: { type: String, enum: ['PLANNED', 'DONE', 'MISSED', 'SCHEDULED', 'COMPLETED', 'NOT_DONE'], default: 'PLANNED' },

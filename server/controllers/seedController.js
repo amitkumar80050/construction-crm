@@ -3,7 +3,7 @@ const Team = require('../models/Team');
 const TeamChannel = require('../models/TeamChannel');
 const TeamMessage = require('../models/TeamMessage');
 const Stage = require('../models/Stage');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const Remark = require('../models/Remark');
 const Reminder = require('../models/Reminder');
 const Activity = require('../models/Activity');
@@ -14,7 +14,7 @@ const seedDatabase = async (req, res) => {
       Activity.deleteMany(),
       Remark.deleteMany(),
       Reminder.deleteMany(),
-      Client.deleteMany(),
+      Lead.deleteMany(),
       Stage.deleteMany(),
       User.deleteMany(),
     ]);
@@ -90,7 +90,7 @@ const seedDatabase = async (req, res) => {
       { name: 'Closed', description: 'Deal closed successfully and onboarding can start.', order: 4, color: '#16a34a' },
     ]);
 
-    const clientTemplate = [
+    const LeadTemplate = [
       {
         name: 'Skyline Builders',
         company: 'Skyline Construction Co.',
@@ -132,7 +132,7 @@ const seedDatabase = async (req, res) => {
         status: 'lost',
         source: 'call',
         projectValue: 150000,
-        notes: 'Client chose a competitor after initial discussions.',
+        notes: 'leadchose a competitor after initial discussions.',
         address: { street: '305 Market St', city: 'San Francisco', state: 'CA', zipCode: '94105', country: 'USA' },
       },
       {
@@ -148,44 +148,44 @@ const seedDatabase = async (req, res) => {
       },
     ];
 
-    const clients = [];
-    for (const [index, clientData] of clientTemplate.entries()) {
+    const Leads = [];
+    for (const [index, LeadData] of LeadTemplate.entries()) {
       const assignedTo = users[index % users.length];
       const currentStage = stages[index % stages.length];
-      const clientId = await Client.generateClientId();
-      const client = await Client.create({
-        clientId,
-        ...clientData,
+      const LeadId = await Lead.generateLeadId();
+      const lead = await Lead.create({
+        LeadId,
+        ...LeadData,
         assignedTo: assignedTo._id,
         currentStage: currentStage._id,
       });
-      clients.push(client);
+      Leads.push(Lead);
     }
 
     const remarksData = [
       {
-        client: clients[0]._id,
+        Lead: Leads[0]._id,
         user: users[2]._id,
-        content: 'Intro call completed. Client wants pricing for support plan.',
+        content: 'Intro call completed. leadwants pricing for support plan.',
         type: 'call',
         visibility: 'public',
       },
       {
-        client: clients[1]._id,
+        Lead: Leads[1]._id,
         user: users[0]._id,
         content: 'Qualified lead from website. Schedule discovery meeting.',
         type: 'meeting',
         visibility: 'team',
       },
       {
-        client: clients[2]._id,
+        Lead: Leads[2]._id,
         user: users[1]._id,
         content: 'Proposal sent. Awaiting feedback on scope and timeline.',
         type: 'email',
         visibility: 'public',
       },
       {
-        client: clients[4]._id,
+        Lead: Leads[4]._id,
         user: users[2]._id,
         content: 'Project closed. Kickoff scheduled for Monday.',
         type: 'note',
@@ -195,7 +195,7 @@ const seedDatabase = async (req, res) => {
 
     const remindersData = [
       {
-        client: clients[0]._id,
+        Lead: Leads[0]._id,
         user: users[2]._id,
         title: 'Follow up on support proposal',
         description: 'Check if Skyline Builders has questions on the support plan.',
@@ -205,7 +205,7 @@ const seedDatabase = async (req, res) => {
         type: 'follow-up',
       },
       {
-        client: clients[1]._id,
+        Lead: Leads[1]._id,
         user: users[1]._id,
         title: 'Discovery meeting with Harbor Developments',
         description: 'Review project challenges and contract requirements.',
@@ -215,7 +215,7 @@ const seedDatabase = async (req, res) => {
         type: 'meeting',
       },
       {
-        client: clients[4]._id,
+        Lead: Leads[4]._id,
         user: users[0]._id,
         title: 'Kickoff call for Cedar Ridge Ventures',
         description: 'Confirm onboarding agenda and deliverables.',
@@ -233,17 +233,20 @@ const seedDatabase = async (req, res) => {
       user: users[0]._id,
       type: 'seed',
       module: 'seed',
-      description: 'Seeded database with sample users, stages, clients, remarks and reminders.',
+      description: 'Seeded database with sample users, stages, Leads, remarks and reminders.',
     });
+
+    const { bootstrapDefaultUsers } = require('../utils/bootstrapUsers');
+    await bootstrapDefaultUsers();
 
     res.status(200).json({
       success: true,
-      message: 'Database seeded successfully',
+      message: 'Database seeded successfully with BuildTrack Pro CRM roles and pipeline',
       users: users.length,
       teams: 1,
       channels: 1,
       stages: stages.length,
-      clients: clients.length,
+      Leads: Leads.length,
       remarks: remarksData.length,
       reminders: remindersData.length,
     });

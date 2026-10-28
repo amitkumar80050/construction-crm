@@ -12,7 +12,7 @@ const { Server } = require('socket.io');
 
 const User = require('../models/User');
 const Team = require('../models/Team');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const Stage = require('../models/Stage');
 const Attendance = require('../models/Attendance');
 const SiteVisit = require('../models/SiteVisit');
@@ -190,9 +190,9 @@ async function runTests() {
     });
 
     // Create a demo lead for stage testing
-    const clientId = await Client.generateClientId();
-    const testLead = await Client.create({
-      clientId,
+    const LeadId = await Lead.generateLeadId();
+    const testLead = await Lead.create({
+      LeadId,
       name: 'Skyline Commercial Tower',
       company: 'Apex Infra Ltd',
       email: 'lead_apex@testcrm.com',
@@ -204,7 +204,7 @@ async function runTests() {
 
     // Telecaller attempts invalid stage jump to "Quotation" -> Must be 403 Forbidden!
     const quoteStage = stageMap['quotation'];
-    const invalidJumpRes = await fetch(`${BASE_URL}/stages/client/${testLead._id}`, {
+    const invalidJumpRes = await fetch(`${BASE_URL}/stages/Lead/${testLead._id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ async function runTests() {
 
     // Telecaller moves to "Follow-up" without notes -> Must be 400 Bad Request!
     const followUpStage = stageMap['follow-up'];
-    const missingNotesRes = await fetch(`${BASE_URL}/stages/client/${testLead._id}`, {
+    const missingNotesRes = await fetch(`${BASE_URL}/stages/Lead/${testLead._id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -227,7 +227,7 @@ async function runTests() {
     recordTest('Module 5: Telecaller Notes Enforcer', 'Enforce Mandatory Notes on Follow-up Stage (400)', missingNotesRes.status === 400);
 
     // Telecaller moves to "Follow-up" with notes & followUpDate -> Must Succeed!
-    const validFollowUpRes = await fetch(`${BASE_URL}/stages/client/${testLead._id}`, {
+    const validFollowUpRes = await fetch(`${BASE_URL}/stages/Lead/${testLead._id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -235,7 +235,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         stageId: followUpStage._id,
-        notes: 'Spoke with client, requested follow-up next Monday.',
+        notes: 'Spoke with Lead, requested follow-up next Monday.',
         followUpDate: '2026-10-05T10:00:00.000Z',
       }),
     });
@@ -244,7 +244,7 @@ async function runTests() {
 
     // Advance to "Site Visit Planned"
     const plannedStage = stageMap['site visit planned'];
-    const plannedRes = await fetch(`${BASE_URL}/stages/client/${testLead._id}`, {
+    const plannedRes = await fetch(`${BASE_URL}/stages/Lead/${testLead._id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -252,7 +252,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         stageId: plannedStage._id,
-        notes: 'Client agreed to site inspection.',
+        notes: 'leadagreed to site inspection.',
       }),
     });
     recordTest('Module 5: Telecaller Hand-off', 'Advance to Site Visit Planned', plannedRes.status === 200);
@@ -262,9 +262,9 @@ async function runTests() {
     // Create 4 test leads with no assignment
     const unassignedLeads = [];
     for (let i = 1; i <= 4; i++) {
-      const cId = await Client.generateClientId();
-      const lead = await Client.create({
-        clientId: cId,
+      const cId = await Lead.generateLeadId();
+      const lead = await Lead.create({
+        LeadId: cId,
         name: `RR Lead Project ${i}`,
         company: `RR Corp ${i}`,
         email: `rr_${i}_${Date.now()}@testcrm.com`,
@@ -276,14 +276,14 @@ async function runTests() {
       unassignedLeads.push(lead._id);
     }
 
-    const distRes = await fetch(`${BASE_URL}/clients/distribute`, {
+    const distRes = await fetch(`${BASE_URL}/Leads/distribute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['manager']}`,
       },
       body: JSON.stringify({
-        clientIds: unassignedLeads,
+        LeadIds: unassignedLeads,
         roleFilter: 'telecaller',
       }),
     });
@@ -310,7 +310,7 @@ async function runTests() {
         scheduledAt: new Date(Date.now() + 86400000).toISOString(),
         address: 'Sector 62, Metro Station Road, Noida, UP',
         priority: 'HIGH',
-        notes: 'Meet client on site near tower foundation.',
+        notes: 'Meet leadon site near tower foundation.',
       }),
     });
     const scheduleData = await scheduleRes.json();
@@ -344,7 +344,7 @@ async function runTests() {
       multipartBody += `--${boundary}\r\n`;
       multipartBody += `Content-Disposition: form-data; name="address"\r\n\r\nSector 62, Noida\r\n`;
       multipartBody += `--${boundary}\r\n`;
-      multipartBody += `Content-Disposition: form-data; name="notes"\r\n\r\nFoundation inspected, client satisfied\r\n`;
+      multipartBody += `Content-Disposition: form-data; name="notes"\r\n\r\nFoundation inspected, leadsatisfied\r\n`;
       multipartBody += `--${boundary}\r\n`;
       multipartBody += `Content-Disposition: form-data; name="photo"; filename="visit_proof.jpg"\r\n`;
       multipartBody += `Content-Type: image/jpeg\r\n\r\n`;
@@ -368,7 +368,7 @@ async function runTests() {
       recordTest('Module 6: Site Visits', 'Complete Visit with Live Photo & GPS Geotagging', completeOk);
 
       // Verify that the lead's current stage was automatically updated to "Site Visit Done"
-      const updatedLead = await Client.findById(testLead._id).populate('currentStage');
+      const updatedLead = await Lead.findById(testLead._id).populate('currentStage');
       const stageUpdatedToDone = updatedLead.pipelineStage === 'SITE_VISIT_DONE' || updatedLead.currentStage?.name?.toLowerCase()?.includes('site visit done');
       recordTest('Module 6: Site Visits', 'Auto-Transition Lead Stage to Site Visit Done', stageUpdatedToDone);
 
@@ -390,7 +390,7 @@ async function runTests() {
           Authorization: `Bearer ${tokens['sales executer']}`,
         },
         body: JSON.stringify({
-          notDoneReason: 'Client unavailable / Not at site',
+          notDoneReason: 'leadunavailable / Not at site',
           nextDate: '2026-10-10T11:00:00.000Z',
         }),
       });

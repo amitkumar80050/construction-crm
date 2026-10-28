@@ -1,10 +1,9 @@
 const mongoose = require('mongoose');
 
 const reminderSchema = new mongoose.Schema({
-  client: {
+  Lead: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Client',
-    required: true,
+    ref: 'Lead',
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,

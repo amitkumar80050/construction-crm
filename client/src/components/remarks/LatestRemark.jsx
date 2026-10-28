@@ -15,10 +15,10 @@ const getTypeColor = (type) => {
 };
 
 /**
- * Shows the most recent remark for a client (e.g. inside ClientCard).
- * Clicking it opens the full RemarkHistory dialog for that client.
+ * Shows the most recent remark for a lead(e.g. inside LeadCard).
+ * Clicking it opens the full RemarkHistory dialog for that Lead.
  */
-const LatestRemark = ({ clientId, clientName }) => {
+const LatestRemark = ({ LeadId, LeadName }) => {
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -28,7 +28,7 @@ const LatestRemark = ({ clientId, clientName }) => {
 
     const fetchLatest = async () => {
       try {
-        const res = await remarkService.getRemarksByClient(clientId);
+        const res = await remarkService.getRemarksByLead(LeadId);
         const list = res.data?.data || [];
         if (mounted) setLatest(list[0] || null);
       } catch (error) {
@@ -38,9 +38,9 @@ const LatestRemark = ({ clientId, clientName }) => {
       }
     };
 
-    if (clientId) fetchLatest();
+    if (LeadId) fetchLatest();
     return () => { mounted = false; };
-  }, [clientId]);
+  }, [LeadId]);
 
   const handleClick = (e) => {
     e.stopPropagation(); // avoid triggering parent card's onClick, if any
@@ -106,8 +106,8 @@ const LatestRemark = ({ clientId, clientName }) => {
       </div>
 
       <RemarkHistory
-        clientId={clientId}
-        clientName={clientName}
+        LeadId={LeadId}
+        LeadName={LeadName}
         isOpen={historyOpen}
         onClose={handleClose}
         onRemarkAdded={handleRemarkAdded}

@@ -16,18 +16,23 @@ const ManagerLeads = () => {
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = async (teamId) => {
     setLoading(true);
     try {
+      const activeTeam = teamId !== undefined ? teamId : selectedTeamId;
+      const params = {};
+      if (activeTeam) params.team = activeTeam;
       const [leadsRes, teamsRes, membersRes] = await Promise.all([
-        leadService.getMyLeads(),
+        leadService.getLeads(params),
         teamService.getTeams(),
         leadService.getTeamMembers(),
       ]);
       setLeads(leadsRes.data?.data || []);
       setTeams(teamsRes.data?.data || []);
       setMembers((membersRes.data?.data || []).filter((member) => ['telecaller', 'sales executer'].includes(member.role)));
-      setSelectedTeamId((current) => current || teamsRes.data?.data?.[0]?._id || '');
+      if (!selectedTeamId && !teamId && teamsRes.data?.data?.[0]?._id) {
+        setSelectedTeamId(teamsRes.data.data[0]._id);
+      }
     } catch (error) { toast.error('Unable to load team leads'); }
     finally { setLoading(false); }
   };
@@ -73,7 +78,7 @@ const ManagerLeads = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h1 style={{ fontSize: '24px', color: '#1e293b' }}>Team Leads</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <select aria-label="Distribution team" value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)} style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 6 }}>
+          <select aria-label="Distribution team" value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); load(event.target.value); }} style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 6 }}>
             <option value="">Select team</option>
             {teams.map((team) => <option key={team._id} value={team._id}>{team.name}</option>)}
           </select>

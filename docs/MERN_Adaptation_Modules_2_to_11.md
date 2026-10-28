@@ -5,7 +5,7 @@ This document corrects the pasted enterprise blueprint to fit the current MERN s
 - Frontend: React + React Router + Context API / Axios
 - Backend: Node.js + Express.js + MongoDB + Mongoose
 - Auth: JWT with role-based access control
-- Existing patterns in this repo: `User`, `Team`, `Client`, `Stage`, `Remark`, `Reminder`, `Activity`, `Import/Export`, `Settings`
+- Existing patterns in this repo: `User`, `Team`, `Lead`, `Stage`, `Remark`, `Reminder`, `Activity`, `Import/Export`, `Settings`
 
 The original design was written in a Java/Spring style. This version converts it into a MongoDB + Express + React implementation that matches the current project structure.
 
@@ -82,10 +82,10 @@ router.get('/members/:teamId', protect, managerOrAdmin, teamController.getTeamMe
 
 ### Correct MERN model
 
-The project already uses `Client` as the lead entity, with stage support:
+The project already uses `Lead` as the lead entity, with stage support:
 
 ```js
-// server/models/Client.js
+// server/models/Lead.js
 pipelineStage: {
   type: String,
   enum: ['NEW', 'CONNECTED', 'INTERESTED', 'FOLLOW_UP', 'SITE_VISIT_PLANNED', 'SITE_VISIT_DONE', 'QUOTATION', 'CONVERTED'],
@@ -176,7 +176,7 @@ router.put('/attendance/:id', protect, manager, managerController.updateAttendan
 ```js
 // server/models/SiteVisit.js
 const siteVisitSchema = new mongoose.Schema({
-  leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
+  leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', required: true },
   scheduledAt: { type: Date, required: true },
   address: { type: String, required: true },
   notes: { type: String },
@@ -457,7 +457,7 @@ router.get('/export', protect, analyticsController.exportReport);
 
 Use Mongo aggregation pipelines on:
 
-- `Client` for lead counts and conversion rate
+- `Lead` for lead counts and conversion rate
 - `User` for team performance
 - `Attendance` for attendance stats
 - `SiteVisit` for completed and missed visits
@@ -471,7 +471,7 @@ Use Mongo aggregation pipelines on:
 ### Example pipeline
 
 ```js
-const result = await Client.aggregate([
+const result = await Lead.aggregate([
   { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
   { $group: { _id: '$pipelineStage', count: { $sum: 1 } } },
 ]);
@@ -557,7 +557,7 @@ The original pasted specification is a strong feature blueprint, but it must be 
 
 - `User` for roles and permissions
 - `Team` for team grouping
-- `Client` for leads
+- `Lead` for leads
 - `Remark` for notes
 - `Stage` for pipeline progression
 - `Activity` for audit trails
@@ -575,11 +575,11 @@ The production deployment is defined by the root `docker-compose.yml`, API and R
 
 ### Verification commands
 
-Run the server tests and production client build from the repository root:
+Run the server tests and production leadbuild from the repository root:
 
 ```sh
 npm test --prefix server
-npm run build --prefix client
+npm run build --prefix Lead
 docker compose config --quiet
 ```
 

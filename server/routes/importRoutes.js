@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const canImportLeads = (req, res, next) => {
-  if (['admin', 'manager', 'telecaller'].includes(req.user.role)) return next();
-  return res.status(403).json({ success: false, message: 'Only Admins, Managers, and Telecallers can import leads.' });
+  if (['admin', 'manager'].includes(req.user.role)) return next();
+  return res.status(403).json({ success: false, message: 'Only Admins and Managers can import leads.' });
 };
 const upload = require('../middleware/uploadMiddleware');
 const {

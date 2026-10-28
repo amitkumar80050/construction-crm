@@ -1,14 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const SiteVisit = require('../models/SiteVisit');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const Activity = require('../models/Activity');
 const { markNotDone } = require('../controllers/siteVisitController.js.js');
 
 test('marking a legacy visit not done does not validate unrelated missing address', async () => {
   const originalFindById = SiteVisit.findById;
   const originalFindOneAndUpdate = SiteVisit.findOneAndUpdate;
-  const originalClientFindById = Client.findById;
+  const originalLeadFindById = Lead.findById;
   const originalActivityCreate = Activity.create;
   const existingVisit = {
     _id: 'visit-1',
@@ -23,8 +23,8 @@ test('marking a legacy visit not done does not validate unrelated missing addres
     updateArgs = args;
     return { ...existingVisit, ...args[1].$set };
   };
-  Client.findById = () => ({ select: async () => null });
-  Activity.create = async () => {};
+  Lead.findById = () => ({ select: async () => null });
+  Activity.create = async () => { };
 
   try {
     const req = {
@@ -53,7 +53,7 @@ test('marking a legacy visit not done does not validate unrelated missing addres
   } finally {
     SiteVisit.findById = originalFindById;
     SiteVisit.findOneAndUpdate = originalFindOneAndUpdate;
-    Client.findById = originalClientFindById;
+    Lead.findById = originalLeadFindById;
     Activity.create = originalActivityCreate;
   }
 });

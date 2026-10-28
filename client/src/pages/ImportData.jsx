@@ -1,9 +1,10 @@
-// client/src/pages/ImportData.jsx
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaHistory, FaUpload, FaFileDownload } from 'react-icons/fa';
 import ImportLeads from './ImportLeads';
 import importService from '../services/importService';
 import { toast } from 'react-toastify';
+import { useAuth } from '../hooks/useAuth';
 
 const TABS = {
   IMPORT: 'import',
@@ -11,9 +12,21 @@ const TABS = {
 };
 
 const ImportData = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isAuthorized = ['admin', 'manager'].includes(user?.role);
   const [activeTab, setActiveTab] = useState(TABS.IMPORT);
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    if (user && !isAuthorized) {
+      toast.error('Only Admins and Managers are authorized to import leads.');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isAuthorized, navigate]);
+
+  if (!isAuthorized) return null;
 
   const fetchHistory = useCallback(async () => {
     setLoadingLogs(true);

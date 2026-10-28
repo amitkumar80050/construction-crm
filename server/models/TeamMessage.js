@@ -6,7 +6,7 @@ const teamMessageSchema = new mongoose.Schema({
   senderName: String,
   message: { type: String, default: '' },
   crmReference: {
-    type: { type: String, enum: ['CLIENT', 'REMARK', 'REMINDER', null], default: null },
+    type: { type: String, enum: ['Lead', 'REMARK', 'REMINDER', null], default: null },
     id: { type: mongoose.Schema.Types.ObjectId, default: null },
   },
   replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'TeamMessage', default: null },

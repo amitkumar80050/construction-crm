@@ -13,7 +13,7 @@ All endpoints use the CRM API base path `/api` and require a bearer access token
 
 Attendance records include `user`, `date`, `checkInTime`, `checkOutTime`, `status`, `managerId`, and `managerRemarks`. `status` is `PENDING`, `APPROVED`, or `REJECTED`. Rejection reasons are also returned in `managerRemarks` (and the legacy `rejectionReason` field).
 
-The legacy `/attendance/mark` and `/attendance/:id/review` routes remain available for existing clients; new clients should use the check-in/check-out and explicit approve/reject routes above.
+The legacy `/attendance/mark` and `/attendance/:id/review` routes remain available for existing Leads; new Leads should use the check-in/check-out and explicit approve/reject routes above.
 
 # Manager Workflow API
 
@@ -83,6 +83,6 @@ All routes require a bearer access token. Role values are `admin`, `manager`, `t
 | `PATCH` | `/leads/:id/stage` | Scoped user, role constrained | Advance one stage at a time with required notes. Follow-up requires a future date. A Sales Executive cannot mark a visit done through this API; completion requires the site-visit photo/GPS workflow. |
 | `POST` | `/leads/:id/notes` | Scoped user | Add a required call note. |
 | `POST` | `/leads/distribute` | Manager or Admin | Round-robin distribute unassigned `NEW` leads in the selected team to active Telecallers. Managers can only distribute their own teams. |
-| `DELETE` | `/clients/:id` | Admin | Delete a lead through the legacy Client alias. |
+| `DELETE` | `/Leads/:id` | Admin | Delete a lead through the legacy leadalias. |
 
 The allowed next-stage rules are: Telecaller `NEW -> CONNECTED -> INTERESTED -> FOLLOW_UP -> SITE_VISIT_PLANNED`; Sales Executive completes a planned visit through the proof-backed visit endpoint, which advances the lead to `SITE_VISIT_DONE`; Manager/Admin advance `SITE_VISIT_DONE -> QUOTATION -> CONVERTED`. Stage changes require notes and cannot move backwards or skip stages. Imports use `/import/csv` or `/import/excel`, `/import/preview`, and `/import/process`; imports flag duplicates by email or phone and default to skipping them.

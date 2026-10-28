@@ -15,17 +15,17 @@ const getStatusColor = (status) => {
   }
 };
 
-const ClientCard = ({ client, onDeleted, onStageMoved }) => {
+const LeadCard = ({ Lead, onDeleted, onStageMoved }) => {
   const navigate = useNavigate();
 
   const handleDelete = (e) => {
     e.stopPropagation();
-    if (onDeleted) onDeleted(client._id);
+    if (onDeleted) onDeleted(Lead._id);
   };
 
   return (
     <div
-      onClick={() => navigate(`/clients/${client._id}`)}
+      onClick={() => navigate(`/Leads/${Lead._id}`)}
       style={{
         background: 'white',
         borderRadius: '12px',
@@ -43,9 +43,9 @@ const ClientCard = ({ client, onDeleted, onStageMoved }) => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: '16px', color: '#1e293b' }}>{client.name}</h3>
+          <h3 style={{ margin: 0, fontSize: '16px', color: '#1e293b' }}>{Lead.name}</h3>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <FaBuilding size={11} /> {client.company}
+            <FaBuilding size={11} /> {Lead.company}
           </p>
         </div>
         <span style={{
@@ -53,33 +53,33 @@ const ClientCard = ({ client, onDeleted, onStageMoved }) => {
           borderRadius: '20px',
           fontSize: '11px',
           fontWeight: 600,
-          background: `${getStatusColor(client.status)}20`,
-          color: getStatusColor(client.status)
+          background: `${getStatusColor(Lead.status)}20`,
+          color: getStatusColor(Lead.status)
         }}>
-          {client.status?.charAt(0).toUpperCase() + client.status?.slice(1)}
+          {Lead.status?.charAt(0).toUpperCase() + Lead.status?.slice(1)}
         </span>
       </div>
 
       {/* Contact info */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: '#475569' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <FaEnvelope size={11} /> {client.email}
+          <FaEnvelope size={11} /> {Lead.email}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <FaPhone size={11} /> {client.phone}
+          <FaPhone size={11} /> {Lead.phone}
         </span>
       </div>
 
       {/* Live widgets */}
       <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <CurrentStage
-          clientId={client._id}
-          clientName={client.name}
-          currentStage={client.currentStage}
+          LeadId={Lead._id}
+          LeadName={Lead.name}
+          currentStage={Lead.currentStage}
           onStageMoved={onStageMoved}
         />
-        <LatestRemark clientId={client._id} clientName={client.name} />
-        <UpcomingReminder clientId={client._id} clientName={client.name} />
+        <LatestRemark LeadId={Lead._id} LeadName={Lead.name} />
+        <UpcomingReminder LeadId={Lead._id} LeadName={Lead.name} />
       </div>
 
       {/* Actions */}
@@ -88,7 +88,7 @@ const ClientCard = ({ client, onDeleted, onStageMoved }) => {
         style={{ display: 'flex', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}
       >
         <button
-          onClick={() => navigate(`/clients/${client._id}`)}
+          onClick={() => navigate(`/Leads/${Lead._id}`)}
           style={{
             flex: 1, padding: '6px 10px', background: '#e0e7ff', color: '#4f46e5',
             border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px',
@@ -98,7 +98,7 @@ const ClientCard = ({ client, onDeleted, onStageMoved }) => {
           <FaEye size={11} /> View
         </button>
         <button
-          onClick={() => navigate(`/clients/${client._id}/edit`)}
+          onClick={() => navigate(`/Leads/${Lead._id}/edit`)}
           style={{
             flex: 1, padding: '6px 10px', background: '#dbeafe', color: '#2563eb',
             border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px',
@@ -122,4 +122,4 @@ const ClientCard = ({ client, onDeleted, onStageMoved }) => {
   );
 };
 
-export default ClientCard;
+export default LeadCard;

@@ -142,7 +142,7 @@ const Import = () => {
     <div style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
         <button
-          onClick={() => navigate('/clients')}
+          onClick={() => navigate('/Leads')}
           style={{
             padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: '8px',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569'
@@ -224,7 +224,7 @@ const Import = () => {
           summary={summary}
           onDownloadErrorReport={summary.failed > 0 ? handleDownloadErrorReport : undefined}
           onImportAnother={resetWizard}
-          onClose={() => navigate('/clients')}
+          onClose={() => navigate('/Leads')}
         />
       )}
     </div>

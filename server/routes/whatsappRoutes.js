@@ -7,6 +7,6 @@ router.post('/init', protect, whatsappController.init);
 router.get('/status', protect, whatsappController.getStatus);
 router.post('/logout', protect, whatsappController.logout);
 router.post('/send', protect, whatsappController.sendMessage);
-router.get('/messages/:clientId', protect, whatsappController.getMessagesByClient);
+router.get('/messages/:LeadId', protect, whatsappController.getMessagesByLead);
 
 module.exports = router;

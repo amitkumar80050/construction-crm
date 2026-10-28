@@ -9,8 +9,8 @@ const activityLogRoutes = require('./routes/activityLogRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
 const teamRoutes = require('./routes/teamRoutes');
 const teamChatRoutes = require('./routes/teamChatRoutes');
-const authScopedRoutes = require('./routes/authScopedRoutes'); 
-const leadRoutes = require('./routes/leadRoutes'); 
+const authScopedRoutes = require('./routes/authScopedRoutes');
+const leadRoutes = require('./routes/leadRoutes');
 const managerRoutes = require('./routes/managerRoutes');
 const siteVisitRoutes = require('./routes/siteVisitRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
@@ -23,7 +23,7 @@ dotenv.config();
 
 const app = express();
 
-const allowedOrigins = [process.env.CLIENT_URL || 'http://localhost:3000'];
+const allowedOrigins = [process.env.Lead_URL || 'http://localhost:3000'];
 if (process.env.NODE_ENV !== 'production') {
   allowedOrigins.push('http://localhost:3000', 'http://localhost:5173');
 }
@@ -68,7 +68,7 @@ function mountRoute(mountPath, routePath) {
 
 // All routes mounted the safe way — one broken route never takes down the others
 mountRoute('/api/auth', './routes/authRoutes');
-mountRoute('/api/clients', './routes/clientRoutes');
+mountRoute('/api/Leads', './routes/LeadRoutes');
 mountRoute('/api/remarks', './routes/remarkRoutes');
 mountRoute('/api/stages', './routes/stageRoutes');
 mountRoute('/api/reminders', './routes/reminderRoutes');
@@ -78,6 +78,7 @@ mountRoute('/api/dev', './routes/seedRoutes');
 mountRoute('/api/import', './routes/importRoutes');
 mountRoute('/api/export', './routes/exportRoutes');
 mountRoute('/api/settings', './routes/settingsRoutes');
+mountRoute('/api/vapi', './routes/vapiRoutes');
 
 // 404 handler — must come AFTER all real routes are mounted
 app.use((req, res) => {

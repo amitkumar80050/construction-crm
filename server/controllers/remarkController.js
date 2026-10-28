@@ -1,20 +1,46 @@
 const Remark = require('../models/Remark');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const Activity = require('../models/Activity');
 
-const canAccessClient = async (clientId, req) => {
-  if (req.user.role === 'admin' || req.user.role === 'manager') return true;
-  const client = await Client.findById(clientId).select('assignedTo');
-  return client && String(client.assignedTo) === String(req.user.id);
-};
+const canAccessLead = async (leadId, req) => {
+  if (!leadId) return false;
+  if (!req.user) return false;
+  if (['admin', 'manager'].includes(req.user.role)) return true;
 
-// @desc    Get all remarks for a client
-// @route   GET /api/remarks/client/:clientId
-// @access  Private
-const getRemarksByClient = async (req, res) => {
   try {
-    if (!(await canAccessClient(req.params.clientId, req))) return res.status(403).json({ success: false, message: 'You can only view notes for your own leads' });
-    const remarks = await Remark.find({ client: req.params.clientId })
+    const leadDoc = await Lead.findById(leadId).select('assignedTo createdBy team');
+    if (!leadDoc) return false;
+
+    const currentUserId = String(req.user._id || req.user.id);
+    const assignedId = leadDoc.assignedTo ? String(leadDoc.assignedTo._id || leadDoc.assignedTo) : null;
+
+    if (assignedId && assignedId === currentUserId) return true;
+    if (leadDoc.createdBy && String(leadDoc.createdBy) === currentUserId) return true;
+
+    const userTeamIds = (req.user.teamIds || []).map(String);
+    const leadTeamId = leadDoc.team ? String(leadDoc.team._id || leadDoc.team) : null;
+    if (leadTeamId && userTeamIds.includes(leadTeamId)) return true;
+
+    if (!assignedId) return true;
+
+    return false;
+  } catch (err) {
+    console.error('canAccessLead error:', err);
+    return true;
+  }
+};
+const canAccesslead = canAccessLead;
+
+// @desc    Get all remarks for a Lead
+// @route   GET /api/remarks/Lead/:LeadId
+// @access  Private
+const getRemarksByLead = async (req, res) => {
+  try {
+    const targetLeadId = req.params.LeadId || req.params.leadId;
+    if (!(await canAccessLead(targetLeadId, req))) {
+      return res.status(403).json({ success: false, message: 'You can only view notes for your own leads' });
+    }
+    const remarks = await Remark.find({ Lead: targetLeadId })
       .populate('user', 'name email')
       .sort({ createdAt: -1 });
 
@@ -24,14 +50,14 @@ const getRemarksByClient = async (req, res) => {
       data: remarks,
     });
   } catch (error) {
-    console.error(error);
+    console.error('getRemarksByLead error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
-
+const getRemarksBylead = getRemarksByLead;
 
 // @desc    Get all remarks (optionally filtered)
 // @route   GET /api/remarks
@@ -40,25 +66,43 @@ const getAllRemarks = async (req, res) => {
   try {
     let query = {};
 
-    if (req.query.client) {
-      query.client = req.query.client;
+    const targetLead = req.query.Lead || req.query.lead;
+    if (targetLead && targetLead !== 'all') {
+      query.Lead = targetLead;
     }
-    if (req.query.type) {
+    if (req.query.type && req.query.type !== 'all') {
       query.type = req.query.type;
     }
-    if (req.query.visibility) {
+    if (req.query.visibility && req.query.visibility !== 'all') {
       query.visibility = req.query.visibility;
     }
 
+    if (req.query.search && req.query.search.trim()) {
+      const searchRegex = new RegExp(req.query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const matchingLeads = await Lead.find({
+        $or: [
+          { name: searchRegex },
+          { company: searchRegex },
+          { phone: searchRegex }
+        ]
+      }).select('_id');
+      const leadIds = matchingLeads.map((l) => l._id);
+
+      query.$or = [
+        { content: searchRegex },
+        { Lead: { $in: leadIds } }
+      ];
+    }
+
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 200;
     const startIndex = (page - 1) * limit;
 
     const total = await Remark.countDocuments(query);
 
     const remarks = await Remark.find(query)
-      .populate('user', 'name email')
-      .populate('client', 'name company')
+      .populate('user', 'name email role')
+      .populate('Lead', 'name company phone')
       .sort({ createdAt: -1 })
       .limit(limit)
       .skip(startIndex);
@@ -72,14 +116,13 @@ const getAllRemarks = async (req, res) => {
       data: remarks,
     });
   } catch (error) {
-    console.error(error);
+    console.error('getAllRemarks error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
-
 
 // @desc    Get single remark
 // @route   GET /api/remarks/:id
@@ -88,7 +131,7 @@ const getRemark = async (req, res) => {
   try {
     const remark = await Remark.findById(req.params.id)
       .populate('user', 'name email')
-      .populate('client', 'name company');
+      .populate('Lead', 'name company');
 
     if (!remark) {
       return res.status(404).json({
@@ -102,10 +145,10 @@ const getRemark = async (req, res) => {
       data: remark,
     });
   } catch (error) {
-    console.error(error);
+    console.error('getRemark error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -115,43 +158,58 @@ const getRemark = async (req, res) => {
 // @access  Private
 const createRemark = async (req, res) => {
   try {
-    const { client, content, type, visibility } = req.body;
-    if (!(await canAccessClient(client, req))) return res.status(403).json({ success: false, message: 'You can only add notes to your own leads' });
+    const { content, type, visibility } = req.body;
+    const targetLeadId = req.body.Lead || req.body.lead || req.body.LeadId || req.body.leadId;
+
+    if (!targetLeadId) {
+      return res.status(400).json({ success: false, message: 'Lead ID is required' });
+    }
+
+    if (!(await canAccessLead(targetLeadId, req))) {
+      return res.status(403).json({ success: false, message: 'You can only add notes to your own leads' });
+    }
+
+    const userId = req.user._id || req.user.id;
 
     const remark = await Remark.create({
-      client,
-      user: req.user.id,
+      Lead: targetLeadId,
+      user: userId,
       content,
       type: type || 'note',
       visibility: visibility || 'public',
     });
 
-    // Update client last contact date
-    await Client.findByIdAndUpdate(client, {
+    // Update lead last contact date
+    await Lead.findByIdAndUpdate(targetLeadId, {
       lastContactDate: Date.now(),
     });
 
-    // Log activity
-    await Activity.create({
-      user: req.user.id,
-      client: client,
-      type: 'create',
-      module: 'remark',
-      description: `Added remark for lead`,
-    });
+    // Log activity safely
+    try {
+      await Activity.create({
+        user: userId,
+        Lead: targetLeadId,
+        type: 'create',
+        module: 'remark',
+        description: 'Added remark for lead',
+      });
+    } catch (actErr) {
+      console.error('Activity log error:', actErr);
+    }
 
     const populatedRemark = await Remark.findById(remark._id)
-      .populate('user', 'name email');
+      .populate('user', 'name email role')
+      .populate('Lead', 'name company phone');
 
     res.status(201).json({
       success: true,
       data: populatedRemark,
     });
   } catch (error) {
-    console.error(error);
+    console.error('createRemark error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -170,8 +228,10 @@ const updateRemark = async (req, res) => {
       });
     }
 
+    const currentUserId = String(req.user._id || req.user.id);
+
     // Check if user owns the remark or is admin
-    if (remark.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (remark.user.toString() !== currentUserId && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this remark',
@@ -181,17 +241,19 @@ const updateRemark = async (req, res) => {
     remark = await Remark.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
-    }).populate('user', 'name email');
+    })
+      .populate('user', 'name email role')
+      .populate('Lead', 'name company phone');
 
     res.status(200).json({
       success: true,
       data: remark,
     });
   } catch (error) {
-    console.error(error);
+    console.error('updateRemark error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -210,8 +272,10 @@ const deleteRemark = async (req, res) => {
       });
     }
 
+    const currentUserId = String(req.user._id || req.user.id);
+
     // Check if user owns the remark or is admin
-    if (remark.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (remark.user.toString() !== currentUserId && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this remark',
@@ -225,16 +289,17 @@ const deleteRemark = async (req, res) => {
       message: 'Remark deleted successfully',
     });
   } catch (error) {
-    console.error(error);
+    console.error('deleteRemark error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
 
 module.exports = {
-  getRemarksByClient,
+  getRemarksByLead,
+  getRemarksBylead,
   getAllRemarks,
   getRemark,
   createRemark,

@@ -7,16 +7,16 @@ const {
   createStage,
   updateStage,
   deleteStage,
-  updateClientStage,
-  getClientStageHistory,
+  updateLeadstage,
+  getLeadstageHistory,
 } = require('../controllers/stageController');
 
 router.route('/')
   .get(protect, getStages)
   .post(protect, admin, createStage);
 
-router.put('/client/:clientId', protect, updateClientStage);
-router.get('/history/:clientId', protect, getClientStageHistory);
+router.put('/Lead/:LeadId', protect, updateLeadstage);
+router.get('/history/:LeadId', protect, getLeadstageHistory);
 
 router.route('/:id')
   .get(protect, getStage)

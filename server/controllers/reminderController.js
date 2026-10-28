@@ -2,21 +2,69 @@ const Reminder = require('../models/Reminder');
 const Activity = require('../models/Activity');
 const { sendReminderEmail } = require('../services/notificationService');
 
-// @desc    Get all reminders
+// @desc    Get all reminders (optionally filtered by Lead, status, priority, etc.)
 // @route   GET /api/reminders
 // @access  Private
 const getReminders = async (req, res) => {
   try {
-    let query = { user: req.user.id };
+    // 1. Automatically update overdue pending reminders in database safely without triggering doc validation
+    const now = new Date();
+    try {
+      await Reminder.updateMany(
+        { dueDate: { $lt: now }, status: 'pending' },
+        { $set: { status: 'overdue' } }
+      );
+    } catch (err) {
+      console.warn('Overdue status update warning:', err.message);
+    }
+
+    let query = {};
+
+    const targetLeadId = req.query.Lead || req.query.lead || req.query.LeadId || req.query.leadId;
+
+    if (targetLeadId && targetLeadId !== 'all') {
+      // Filter by Lead (capital L in schema)
+      query.Lead = targetLeadId;
+    } else {
+      // General reminder list: non-admin/manager only sees own reminders
+      if (req.user && req.user.role !== 'admin' && req.user.role !== 'manager') {
+        query.user = req.user._id || req.user.id;
+      }
+    }
 
     // Filter by status
-    if (req.query.status) {
+    if (req.query.status && req.query.status !== 'all') {
       query.status = req.query.status;
     }
 
     // Filter by priority
-    if (req.query.priority) {
+    if (req.query.priority && req.query.priority !== 'all') {
       query.priority = req.query.priority;
+    }
+
+    // Filter by type
+    if (req.query.type && req.query.type !== 'all') {
+      query.type = req.query.type;
+    }
+
+    // Search query
+    if (req.query.search && req.query.search.trim()) {
+      const searchRegex = new RegExp(req.query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const Lead = require('../models/Lead');
+      const matchingLeads = await Lead.find({
+        $or: [
+          { name: searchRegex },
+          { company: searchRegex },
+          { phone: searchRegex }
+        ]
+      }).select('_id');
+      const leadIds = matchingLeads.map((l) => l._id);
+
+      query.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { Lead: { $in: leadIds } }
+      ];
     }
 
     // Filter by due date
@@ -34,35 +82,19 @@ const getReminders = async (req, res) => {
       query.status = 'pending';
     }
 
-    // Filter by client
-    if (req.query.client) {
-      query.client = req.query.client;
-    }
-
     // Pagination
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 200;
     const startIndex = (page - 1) * limit;
 
     const total = await Reminder.countDocuments(query);
 
     const reminders = await Reminder.find(query)
-      .populate('client', 'name company email phone')
-      .populate('user', 'name email')
+      .populate('Lead', 'name company email phone')
+      .populate('user', 'name email role')
       .sort({ dueDate: 1 })
       .limit(limit)
       .skip(startIndex);
-
-    // Update overdue status
-    const now = new Date();
-    const overdueReminders = reminders.filter(
-      (r) => r.dueDate < now && r.status === 'pending'
-    );
-
-    for (const reminder of overdueReminders) {
-      reminder.status = 'overdue';
-      await reminder.save();
-    }
 
     res.status(200).json({
       success: true,
@@ -73,10 +105,35 @@ const getReminders = async (req, res) => {
       data: reminders,
     });
   } catch (error) {
-    console.error(error);
+    console.error('getReminders error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
+    });
+  }
+};
+
+// @desc    Get reminders by Lead ID
+// @route   GET /api/reminders/Lead/:LeadId
+// @access  Private
+const getRemindersByLead = async (req, res) => {
+  try {
+    const targetLeadId = req.params.LeadId || req.params.leadId;
+    const reminders = await Reminder.find({ Lead: targetLeadId })
+      .populate('Lead', 'name company email phone')
+      .populate('user', 'name email')
+      .sort({ dueDate: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: reminders.length,
+      data: reminders,
+    });
+  } catch (error) {
+    console.error('getRemindersByLead error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -87,7 +144,7 @@ const getReminders = async (req, res) => {
 const getReminder = async (req, res) => {
   try {
     const reminder = await Reminder.findById(req.params.id)
-      .populate('client', 'name company email phone')
+      .populate('Lead', 'name company email phone')
       .populate('user', 'name email');
 
     if (!reminder) {
@@ -102,10 +159,10 @@ const getReminder = async (req, res) => {
       data: reminder,
     });
   } catch (error) {
-    console.error(error);
+    console.error('getReminder error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -115,29 +172,45 @@ const getReminder = async (req, res) => {
 // @access  Private
 const createReminder = async (req, res) => {
   try {
+    const targetLeadId = req.body.Lead || req.body.lead || req.body.LeadId || req.body.leadId;
+    if (!targetLeadId) {
+      return res.status(400).json({ success: false, message: 'Lead ID is required' });
+    }
+
+    const userId = req.user._id || req.user.id;
+
     const reminderData = {
       ...req.body,
-      user: req.user.id,
+      Lead: targetLeadId,
+      user: userId,
     };
 
     const reminder = await Reminder.create(reminderData);
 
-    // Send email notification
+    // Send email notification safely
     if (req.body.sendEmail) {
-      await sendReminderEmail(reminder);
+      try {
+        await sendReminderEmail(reminder);
+      } catch (emailErr) {
+        console.error('sendReminderEmail error:', emailErr);
+      }
     }
 
-    // Log activity
-    await Activity.create({
-      user: req.user.id,
-      client: reminder.client,
-      type: 'create',
-      module: 'reminder',
-      description: `Created reminder: ${reminder.title}`,
-    });
+    // Log activity safely
+    try {
+      await Activity.create({
+        user: userId,
+        Lead: reminder.Lead,
+        type: 'create',
+        module: 'reminder',
+        description: `Created reminder: ${reminder.title}`,
+      });
+    } catch (actErr) {
+      console.error('Activity log error:', actErr);
+    }
 
     const populatedReminder = await Reminder.findById(reminder._id)
-      .populate('client', 'name company email')
+      .populate('Lead', 'name company email')
       .populate('user', 'name email');
 
     res.status(201).json({
@@ -145,10 +218,10 @@ const createReminder = async (req, res) => {
       data: populatedReminder,
     });
   } catch (error) {
-    console.error(error);
+    console.error('createReminder error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -167,8 +240,10 @@ const updateReminder = async (req, res) => {
       });
     }
 
-    // Check if user owns the reminder
-    if (reminder.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    const currentUserId = String(req.user._id || req.user.id);
+
+    // Check if user owns the reminder or is admin
+    if (reminder.user.toString() !== currentUserId && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this reminder',
@@ -179,7 +254,7 @@ const updateReminder = async (req, res) => {
       new: true,
       runValidators: true,
     })
-      .populate('client', 'name company email')
+      .populate('Lead', 'name company email')
       .populate('user', 'name email');
 
     res.status(200).json({
@@ -187,10 +262,10 @@ const updateReminder = async (req, res) => {
       data: reminder,
     });
   } catch (error) {
-    console.error(error);
+    console.error('updateReminder error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -213,15 +288,19 @@ const completeReminder = async (req, res) => {
     reminder.completedAt = Date.now();
     await reminder.save();
 
+    const populated = await Reminder.findById(reminder._id)
+      .populate('Lead', 'name company email phone')
+      .populate('user', 'name email role');
+
     res.status(200).json({
       success: true,
-      data: reminder,
+      data: populated,
     });
   } catch (error) {
-    console.error(error);
+    console.error('completeReminder error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
@@ -240,7 +319,9 @@ const deleteReminder = async (req, res) => {
       });
     }
 
-    if (reminder.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    const currentUserId = String(req.user._id || req.user.id);
+
+    if (reminder.user.toString() !== currentUserId && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this reminder',
@@ -254,16 +335,17 @@ const deleteReminder = async (req, res) => {
       message: 'Reminder deleted successfully',
     });
   } catch (error) {
-    console.error(error);
+    console.error('deleteReminder error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Server Error',
     });
   }
 };
 
 module.exports = {
   getReminders,
+  getRemindersByLead,
   getReminder,
   createReminder,
   updateReminder,

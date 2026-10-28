@@ -12,7 +12,7 @@ const config = {
   smtpPort: process.env.SMTP_PORT,
   smtpUser: process.env.SMTP_USER,
   smtpPass: process.env.SMTP_PASS,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
+  LeadUrl: process.env.Lead_URL || 'http://localhost:3000',
   maxFileSize: process.env.MAX_FILE_SIZE || 5242880,
   uploadPath: process.env.UPLOAD_PATH || './uploads',
 };

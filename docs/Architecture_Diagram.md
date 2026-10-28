@@ -1,6 +1,6 @@
 ```mermaid
 flowchart LR
-	Browser[React client]
+	Browser[React Lead]
 	Proxy[Nginx reverse proxy\nTLS and static files]
 	API[Express CRM API\nJWT and role checks]
 	Socket[Socket.IO\nJWT-authenticated events]

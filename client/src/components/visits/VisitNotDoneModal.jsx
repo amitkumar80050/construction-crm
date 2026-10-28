@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import siteVisitService from '../../services/siteVisitService';
 
-const REASONS = ['CLIENT_UNAVAILABLE', 'POSTPONED', 'WRONG_ADDRESS', 'NOT_INTERESTED', 'OTHER'];
+const REASONS = ['Lead_UNAVAILABLE', 'POSTPONED', 'WRONG_ADDRESS', 'NOT_INTERESTED', 'OTHER'];
 
 const VisitNotDoneModal = ({ visitId, onClose, onDone }) => {
   const [reason, setReason] = useState('');

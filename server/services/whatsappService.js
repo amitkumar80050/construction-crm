@@ -1,9 +1,9 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Lead, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
-const ClientModel = require('../models/Client');
+const LeadModel = require('../models/Lead');
 
-let waClient = null;
+let walead = null;
 let currentQrDataUrl = null;
 let connectionStatus = 'disconnected'; // 'disconnected' | 'qr_pending' | 'connected' | 'auth_failed'
 
@@ -12,17 +12,17 @@ function normalizePhone(waId) {
   return waId.replace('@c.us', '').replace(/\D/g, '');
 }
 
-async function findMatchingClient(phone) {
-  // Match by last 10 digits, since stored client phones may or may not
+async function findMatchingLead(phone) {
+  // Match by last 10 digits, since stored leadphones may or may not
   // include country code / formatting.
   const last10 = phone.slice(-10);
-  return ClientModel.findOne({ phone: { $regex: `${last10}$` } }).select('_id');
+  return LeadModel.findOne({ phone: { $regex: `${last10}$` } }).select('_id');
 }
 
 function initWhatsApp() {
-  if (waClient) return; // already initialized
+  if (waLead) return; // already initialized
 
-  waClient = new Client({
+  walead = new Lead({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
       headless: true,
@@ -31,35 +31,35 @@ function initWhatsApp() {
     },
   });
 
-  waClient.on('qr', async (qr) => {
+  waLead.on('qr', async (qr) => {
     connectionStatus = 'qr_pending';
     currentQrDataUrl = await QRCode.toDataURL(qr);
     console.log('📱 WhatsApp QR generated — scan it from the dashboard.');
   });
 
-  waClient.on('ready', () => {
+  waLead.on('ready', () => {
     connectionStatus = 'connected';
     currentQrDataUrl = null;
-    console.log('✅ WhatsApp client connected.');
+    console.log('✅ WhatsApp leadconnected.');
   });
 
-  waClient.on('auth_failure', () => {
+  waLead.on('auth_failure', () => {
     connectionStatus = 'auth_failed';
     console.error('❌ WhatsApp authentication failed.');
   });
 
-  waClient.on('disconnected', (reason) => {
+  waLead.on('disconnected', (reason) => {
     connectionStatus = 'disconnected';
     console.warn('⚠️  WhatsApp disconnected:', reason);
-    waClient = null;
+    walead = null;
   });
 
-  waClient.on('message', async (msg) => {
+  waLead.on('message', async (msg) => {
     try {
       const phone = normalizePhone(msg.from);
-      const matchedClient = await findMatchingClient(phone);
+      const matchedlead = await findMatchingLead(phone);
       await WhatsAppMessage.create({
-        client: matchedClient?._id || null,
+        Lead: matchedLead?._id || null,
         phone,
         direction: 'incoming',
         body: msg.body,
@@ -70,11 +70,11 @@ function initWhatsApp() {
     }
   });
 
- waClient.initialize().catch((error) => {
-  console.error('❌ WhatsApp initialize() failed:', error.message);
-  connectionStatus = 'auth_failed';
-  waClient = null;
-});
+  waLead.initialize().catch((error) => {
+    console.error('❌ WhatsApp initialize() failed:', error.message);
+    connectionStatus = 'auth_failed';
+    walead = null;
+  });
 }
 
 function getStatus() {
@@ -88,11 +88,11 @@ async function sendMessage(phone, body, userId) {
   const cleanPhone = phone.replace(/\D/g, '');
   const chatId = `${cleanPhone}@c.us`;
 
-  const sent = await waClient.sendMessage(chatId, body);
+  const sent = await waLead.sendMessage(chatId, body);
 
-  const matchedClient = await findMatchingClient(cleanPhone);
+  const matchedlead = await findMatchingLead(cleanPhone);
   await WhatsAppMessage.create({
-    client: matchedClient?._id || null,
+    Lead: matchedLead?._id || null,
     phone: cleanPhone,
     direction: 'outgoing',
     body,
@@ -104,9 +104,9 @@ async function sendMessage(phone, body, userId) {
 }
 
 function logout() {
-  if (waClient) {
-    waClient.logout().catch(() => {});
-    waClient = null;
+  if (waLead) {
+    waLead.logout().catch(() => { });
+    walead = null;
   }
   connectionStatus = 'disconnected';
   currentQrDataUrl = null;

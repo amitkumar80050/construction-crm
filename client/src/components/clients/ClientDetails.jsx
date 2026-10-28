@@ -11,14 +11,14 @@ const getStatusColor = (status) => {
   }
 };
 
-const ClientDetails = ({ client }) => {
-  if (!client) return null;
+const LeadDetails = ({ lead }) => {
+  if (!Lead) return null;
 
   const addressParts = [
-    client.address?.street,
-    client.address?.city,
-    client.address?.state,
-    client.address?.zipCode
+    Lead.address?.street,
+    Lead.address?.city,
+    Lead.address?.state,
+    Lead.address?.zipCode
   ].filter(Boolean);
 
   return (
@@ -32,9 +32,9 @@ const ClientDetails = ({ client }) => {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '22px', color: '#0f172a' }}>{client.name}</h2>
+          <h2 style={{ margin: 0, fontSize: '22px', color: '#0f172a' }}>{Lead.name}</h2>
           <p style={{ margin: '4px 0 0', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <FaBuilding size={12} /> {client.company}
+            <FaBuilding size={12} /> {Lead.company}
           </p>
         </div>
         <span style={{
@@ -42,10 +42,10 @@ const ClientDetails = ({ client }) => {
           borderRadius: '20px',
           fontSize: '12px',
           fontWeight: 600,
-          background: `${getStatusColor(client.status)}20`,
-          color: getStatusColor(client.status)
+          background: `${getStatusColor(Lead.status)}20`,
+          color: getStatusColor(Lead.status)
         }}>
-          {client.status?.charAt(0).toUpperCase() + client.status?.slice(1)}
+          {Lead.status?.charAt(0).toUpperCase() + Lead.status?.slice(1)}
         </span>
       </div>
 
@@ -56,16 +56,16 @@ const ClientDetails = ({ client }) => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#f8fafc', borderRadius: '10px' }}>
           <FaEnvelope color="#16a34a" />
-          <span style={{ color: '#334155', fontSize: '14px' }}>{client.email}</span>
+          <span style={{ color: '#334155', fontSize: '14px' }}>{Lead.email}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#f8fafc', borderRadius: '10px' }}>
           <FaPhone color="#dc2626" />
-          <span style={{ color: '#334155', fontSize: '14px' }}>{client.phone}</span>
+          <span style={{ color: '#334155', fontSize: '14px' }}>{Lead.phone}</span>
         </div>
-        {client.projectValue > 0 && (
+        {Lead.projectValue > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#f8fafc', borderRadius: '10px' }}>
             <FaMoneyBillWave color="#2563eb" />
-            <span style={{ color: '#334155', fontSize: '14px' }}>${client.projectValue.toLocaleString()}</span>
+            <span style={{ color: '#334155', fontSize: '14px' }}>${Lead.projectValue.toLocaleString()}</span>
           </div>
         )}
         {addressParts.length > 0 && (
@@ -74,22 +74,22 @@ const ClientDetails = ({ client }) => {
             <span style={{ color: '#334155', fontSize: '14px' }}>{addressParts.join(', ')}</span>
           </div>
         )}
-        {client.createdAt && (
+        {Lead.createdAt && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#f8fafc', borderRadius: '10px' }}>
             <FaCalendarAlt color="#64748b" />
-            <span style={{ color: '#334155', fontSize: '14px' }}>Added {new Date(client.createdAt).toLocaleDateString()}</span>
+            <span style={{ color: '#334155', fontSize: '14px' }}>Added {new Date(Lead.createdAt).toLocaleDateString()}</span>
           </div>
         )}
       </div>
 
-      {client.notes && (
+      {Lead.notes && (
         <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px' }}>
           <strong style={{ fontSize: '13px', color: '#1e293b' }}>Notes</strong>
-          <p style={{ margin: '6px 0 0', color: '#475569', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{client.notes}</p>
+          <p style={{ margin: '6px 0 0', color: '#475569', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{Lead.notes}</p>
         </div>
       )}
     </div>
   );
 };
 
-export default ClientDetails;
+export default LeadDetails;

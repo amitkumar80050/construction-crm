@@ -37,7 +37,7 @@ const siteVisitService = {
   },
   createSiteVisit: async (data) => {
     const res = await api.post('/manager/assign-visit', {
-      leadId: data.leadId || data.clientId,
+      leadId: data.leadId || data.LeadId,
       executiveId: data.executiveId,
       scheduledAt: data.scheduledAt,
       address: data.address,
@@ -45,6 +45,14 @@ const siteVisitService = {
       notes: data.notes,
     });
     return res.data;
+  },
+  reverseGeocode: async (lat, lng) => {
+    try {
+      const res = await api.get('/site-visits/reverse-geocode', { params: { lat, lng } });
+      return res.data;
+    } catch (e) {
+      return { success: false, displayName: `${lat}, ${lng}` };
+    }
   },
 };
 

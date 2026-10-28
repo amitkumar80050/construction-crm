@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const {
-  getRemarksByClient,
+  getRemarksByLead,
   getAllRemarks,
   getRemark,
   createRemark,
@@ -10,7 +10,7 @@ const {
   deleteRemark,
 } = require('../controllers/remarkController');
 
-router.get('/client/:clientId', protect, getRemarksByClient);
+router.get('/Lead/:LeadId', protect, getRemarksByLead);
 
 router.route('/')
   .get(protect, getAllRemarks)

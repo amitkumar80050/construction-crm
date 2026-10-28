@@ -24,7 +24,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "5000"
-      CLIENT_URL: https://${DOMAIN:?Set DOMAIN in .env}
+      Lead_URL: https://${DOMAIN:?Set DOMAIN in .env}
       MONGO_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/construction_crm?authSource=admin
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
       WHATSAPP_CHROME_PATH: /usr/bin/chromium
@@ -49,7 +49,7 @@ services:
 
   web:
     build:
-      context: ./client
+      context: ./Lead
       args:
         REACT_APP_API_URL: /api
     restart: unless-stopped

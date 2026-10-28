@@ -39,7 +39,7 @@ const MyLogs = () => {
 
   const getModuleBadgeColor = (module) => {
     switch (module) {
-      case 'client':
+      case 'Lead':
         return 'bg-primary-subtle text-primary border border-primary-subtle';
       case 'stage':
         return 'bg-purple-subtle text-purple border border-purple-subtle';
@@ -148,9 +148,9 @@ const MyLogs = () => {
                     </td>
                     <td>
                       <div className="text-dark small">{log.description}</div>
-                      {log.client && (
+                      {log.lead && (
                         <small className="text-muted">
-                          Client: <strong>{typeof log.client === 'object' ? log.client.name : log.client}</strong>
+                          Lead: <strong>{typeof log.lead === 'object' ? log.Lead.name : log.Lead}</strong>
                         </small>
                       )}
                     </td>

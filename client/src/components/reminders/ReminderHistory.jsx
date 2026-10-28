@@ -16,23 +16,25 @@ const getStatusStyle = (status) => {
   return { background: `${c}20`, color: c };
 };
 
-const ReminderHistory = ({ clientId, clientName, isOpen, onClose, onReminderChanged }) => {
+const ReminderHistory = ({ LeadId, leadId, LeadName, leadName, isOpen, onClose, onReminderChanged }) => {
+  const actualLeadId = LeadId || leadId;
+  const actualLeadName = LeadName || leadName;
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
 
   const fetchReminders = useCallback(async () => {
-    if (!clientId) return;
+    if (!actualLeadId) return;
     setLoading(true);
     try {
-      const res = await reminderService.getRemindersByClient(clientId);
+      const res = await reminderService.getRemindersByLead(actualLeadId);
       setReminders(res.data?.data || []);
     } catch (error) {
       toast.error('Failed to load reminders');
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [actualLeadId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -95,7 +97,7 @@ const ReminderHistory = ({ clientId, clientName, isOpen, onClose, onReminderChan
         }}>
           <div>
             <h2 style={{ fontSize: '18px', color: '#1e293b', margin: 0 }}>Reminder History</h2>
-            {clientName && <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0' }}>{clientName}</p>}
+            {actualLeadName && <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0' }}>{actualLeadName}</p>}
           </div>
           <button
             onClick={onClose}
@@ -108,7 +110,7 @@ const ReminderHistory = ({ clientId, clientName, isOpen, onClose, onReminderChan
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
           {showAddForm ? (
             <AddReminder
-              clientId={clientId}
+              LeadId={actualLeadId}
               onAdded={handleAdded}
               onCancel={() => setShowAddForm(false)}
             />
@@ -131,7 +133,7 @@ const ReminderHistory = ({ clientId, clientName, isOpen, onClose, onReminderChan
           ) : reminders.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px 0' }}>
               <FaBell size={28} style={{ marginBottom: '8px' }} />
-              <p>No reminders yet for this client.</p>
+              <p>No reminders yet for this Lead.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

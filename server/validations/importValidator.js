@@ -1,10 +1,10 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[0-9+\-\s()]{7,15}$/;
 
-// Configuration for the Leads module — mirrors your Client schema.
+// Configuration for the Leads module — mirrors your leadschema.
 // To support other modules (customers, projects, etc.), add a matching config object.
 const LEAD_FIELD_CONFIG = {
-  required: ['name', 'phone', 'company', 'email'], // email added — Client schema requires it
+  required: ['name', 'phone', 'company', 'email'], // email added — leadschema requires it
   maxLengths: { name: 100, company: 100, email: 100, notes: 2000 },
 };
 

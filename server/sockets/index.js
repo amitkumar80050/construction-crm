@@ -28,8 +28,11 @@ function initSocket(io) {
     socket.join(`user:${socket.user._id}`);
 
     socket.on('team:join', async (teamId) => {
-      // Verify membership server-side — never trust the client's teamId alone
-      const isMember = socket.user.role === 'admin' || socket.user.teamIds?.some((id) => String(id) === String(teamId));
+      let isMember = socket.user.role === 'admin' || socket.user.teamIds?.some((id) => String(id?._id || id) === String(teamId));
+      if (!isMember) {
+        const teamDoc = await Team.findById(teamId).select('teamLead');
+        if (teamDoc && String(teamDoc.teamLead) === String(socket.user._id)) isMember = true;
+      }
       if (!isMember) return socket.emit('error', 'Not authorized for this team');
       socket.join(`team:${teamId}`);
     });
@@ -39,7 +42,11 @@ function initSocket(io) {
         const channel = await TeamChannel.findById(channelId);
         if (!channel) return;
 
-        const isMember = socket.user.role === 'admin' || socket.user.teamIds?.some((id) => String(id) === String(channel.team));
+        let isMember = socket.user.role === 'admin' || socket.user.teamIds?.some((id) => String(id?._id || id) === String(channel.team));
+        if (!isMember) {
+          const teamDoc = await Team.findById(channel.team).select('teamLead');
+          if (teamDoc && String(teamDoc.teamLead) === String(socket.user._id)) isMember = true;
+        }
         if (!isMember) return socket.emit('error', 'Not authorized for this channel');
 
         const doc = await TeamMessage.create({
@@ -58,7 +65,7 @@ function initSocket(io) {
       }
     });
 
-    socket.on('disconnect', () => {});
+    socket.on('disconnect', () => { });
   });
 }
 

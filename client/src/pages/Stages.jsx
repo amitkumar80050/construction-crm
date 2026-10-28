@@ -5,17 +5,17 @@ import {
   FaPlus, FaEdit, FaTrash, FaArrowRight, FaLayerGroup
 } from 'react-icons/fa';
 import stageService from '../services/stageService';
-import clientService from '../services/clientService';
+import Leadservice from '../services/leadService';
 
 const Stages = () => {
   const navigate = useNavigate();
   const [stages, setStages] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [Leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedLead, setSelectedLead] = useState(null);
   const [selectedNewStage, setSelectedNewStage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -28,12 +28,12 @@ const Stages = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [stagesRes, clientsRes] = await Promise.all([
+      const [stagesRes, LeadsRes] = await Promise.all([
         stageService.getStages(),
-        clientService.getClients({ limit: 200 })
+        Leadservice.getLeads({ limit: 200 })
       ]);
       setStages(stagesRes.data?.data || []);
-      setClients(clientsRes.data?.data || []);
+      setLeads(LeadsRes.data?.data || []);
     } catch (error) {
       const message = error?.response?.data?.message || 'Unable to load stages';
       toast.error(message);
@@ -46,9 +46,9 @@ const Stages = () => {
     fetchData();
   }, [fetchData]);
 
-  // Real lead count per stage, computed from actual client data
+  // Real lead count per stage, computed from actual leaddata
   const getLeadCountForStage = (stageId) => {
-    return clients.filter((c) => c.currentStage?._id === stageId).length;
+    return Leads.filter((c) => String(c.currentStage?._id || c.currentStage) === String(stageId)).length;
   };
 
   const handleAddStage = async () => {
@@ -89,19 +89,19 @@ const Stages = () => {
     }
   };
 
-  const moveClientToStage = async () => {
-    if (!selectedClient || !selectedNewStage) {
+  const moveLeadToStage = async () => {
+    if (!selectedLead || !selectedNewStage) {
       toast.error('Please select a stage');
       return;
     }
 
     setSaving(true);
     try {
-      await stageService.updateClientStage(selectedClient._id, selectedNewStage);
+      await stageService.updateLeadstage(selectedLead._id, selectedNewStage);
       const stageName = stages.find((s) => s._id === selectedNewStage)?.name || 'new stage';
       toast.success(`Lead moved to ${stageName} stage!`);
       setShowMoveModal(false);
-      setSelectedClient(null);
+      setSelectedLead(null);
       setSelectedNewStage('');
       fetchData();
     } catch (error) {
@@ -215,7 +215,7 @@ const Stages = () => {
         </div>
       )}
 
-      {/* Leads Stage Management — real client data */}
+      {/* Leads Stage Management — real leaddata */}
       <div style={{
         background: 'white',
         padding: '20px',
@@ -226,7 +226,7 @@ const Stages = () => {
 
         {loading ? (
           <p style={{ color: '#94a3b8' }}>Loading leads...</p>
-        ) : clients.length === 0 ? (
+        ) : Leads.length === 0 ? (
           <p style={{ color: '#94a3b8' }}>No leads found.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -240,25 +240,32 @@ const Stages = () => {
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client) => (
-                  <tr key={client._id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                {Leads.map((Lead) => (
+                  <tr key={Lead._id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td
-                      onClick={() => navigate(`/clients/${client._id}`)}
+                      onClick={() => navigate(`/Leads/${Lead._id}`)}
                       style={{ padding: '12px', fontWeight: '500', cursor: 'pointer' }}
                     >
-                      {client.name}
-                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>{client.company}</div>
+                      {Lead.name}
+                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>{Lead.company}</div>
                     </td>
                     <td style={{ padding: '12px' }}>
-                      {client.currentStage ? (
+                      {Lead.currentStage?.name ? (
                         <span style={{
                           padding: '4px 12px',
                           borderRadius: '20px',
                           fontSize: '12px',
-                          background: `${client.currentStage.color}20`,
-                          color: client.currentStage.color
+                          background: `${Lead.currentStage.color || '#2563eb'}20`,
+                          color: Lead.currentStage.color || '#2563eb'
                         }}>
-                          {client.currentStage.name}
+                          {Lead.currentStage.name}
+                        </span>
+                      ) : Lead.pipelineStage ? (
+                        <span style={{
+                          padding: '4px 12px', borderRadius: '20px', fontSize: '12px',
+                          background: '#eff6ff', color: '#2563eb', fontWeight: 500
+                        }}>
+                          {Lead.pipelineStage.replace(/_/g, ' ')}
                         </span>
                       ) : (
                         <span style={{
@@ -270,12 +277,12 @@ const Stages = () => {
                       )}
                     </td>
                     <td style={{ padding: '12px', color: '#64748b' }}>
-                      {new Date(client.updatedAt).toLocaleDateString()}
+                      {new Date(Lead.updatedAt).toLocaleDateString()}
                     </td>
                     <td style={{ padding: '12px' }}>
                       <button
                         onClick={() => {
-                          setSelectedClient(client);
+                          setSelectedLead(Lead);
                           setSelectedNewStage('');
                           setShowMoveModal(true);
                         }}
@@ -371,7 +378,7 @@ const Stages = () => {
       )}
 
       {/* Move Lead Modal */}
-      {showMoveModal && selectedClient && (
+      {showMoveModal && selectedLead && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.5)', display: 'flex',
@@ -382,9 +389,9 @@ const Stages = () => {
             maxWidth: '400px', width: '100%'
           }}>
             <h2 style={{ marginBottom: '20px', color: '#1e293b' }}>Move Lead to Stage</h2>
-            <p style={{ marginBottom: '8px' }}>Lead: <strong>{selectedClient.name}</strong></p>
+            <p style={{ marginBottom: '8px' }}>Lead: <strong>{selectedLead.name}</strong></p>
             <p style={{ marginBottom: '16px' }}>
-              Current Stage: <strong>{selectedClient.currentStage?.name || 'No stage'}</strong>
+              Current Stage: <strong>{selectedLead.currentStage?.name || 'No stage'}</strong>
             </p>
 
             <div style={{ marginBottom: '24px' }}>
@@ -399,9 +406,9 @@ const Stages = () => {
                   <option
                     key={stage._id}
                     value={stage._id}
-                    disabled={stage._id === selectedClient.currentStage?._id}
+                    disabled={stage._id === selectedLead.currentStage?._id}
                   >
-                    {stage.name}{stage._id === selectedClient.currentStage?._id ? ' (current)' : ''}
+                    {stage.name}{stage._id === selectedLead.currentStage?._id ? ' (current)' : ''}
                   </option>
                 ))}
               </select>
@@ -411,7 +418,7 @@ const Stages = () => {
               <button
                 onClick={() => {
                   setShowMoveModal(false);
-                  setSelectedClient(null);
+                  setSelectedLead(null);
                   setSelectedNewStage('');
                 }}
                 style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
@@ -419,7 +426,7 @@ const Stages = () => {
                 Cancel
               </button>
               <button
-                onClick={moveClientToStage}
+                onClick={moveLeadToStage}
                 disabled={saving}
                 style={{
                   padding: '10px 20px', background: saving ? '#93c5fd' : '#2563eb', color: 'white',

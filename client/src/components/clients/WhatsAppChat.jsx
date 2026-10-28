@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { FaPaperPlane } from 'react-icons/fa';
 import whatsappService from '../../services/whatsappService';
 
-const WhatsAppChat = ({ client }) => {
+const WhatsAppChat = ({ lead }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -11,14 +11,14 @@ const WhatsAppChat = ({ client }) => {
 
   const fetchMessages = useCallback(async () => {
     try {
-      const res = await whatsappService.getMessagesByClient(client._id);
+      const res = await whatsappService.getMessagesByLead(Lead._id);
       setMessages(res.data.data);
     } catch (error) {
       // silent
     } finally {
       setLoading(false);
     }
-  }, [client._id]);
+  }, [Lead._id]);
 
   useEffect(() => {
     fetchMessages();
@@ -30,7 +30,7 @@ const WhatsAppChat = ({ client }) => {
     if (!text.trim()) return;
     setSending(true);
     try {
-      await whatsappService.sendMessage(client.phone, text.trim());
+      await whatsappService.sendMessage(Lead.phone, text.trim());
       setText('');
       fetchMessages();
     } catch (error) {
@@ -43,7 +43,7 @@ const WhatsAppChat = ({ client }) => {
   return (
     <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', height: '400px' }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', fontWeight: 600, color: '#1e293b' }}>
-        WhatsApp — {client.name}
+        WhatsApp — {Lead.name}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>

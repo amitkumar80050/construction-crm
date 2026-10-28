@@ -2,14 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
 const XLSX = require('xlsx');
-const Client = require('../models/Client');
+const mongoose = require('mongoose');
+const Lead = require('../models/Lead');
 const Stage = require('../models/Stage');
 
 const CRM_FIELDS = [
   { key: 'Name', label: 'Lead Name', required: true },
   { key: 'Contact', label: 'Phone or email', required: false },
   { key: 'Address', label: 'Address', required: false },
-  { key: 'Source', label: 'Source', required: true },
+  { key: 'Source', label: 'Source', required: false },
   { key: 'Phone', label: 'Phone', required: false },
   { key: 'Email', label: 'Email', required: false },
   { key: 'Company', label: 'Company', required: false },
@@ -28,7 +29,9 @@ const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 function readCSV(filePath) {
   const raw = fs.readFileSync(filePath, 'utf8');
   const records = parse(raw, { columns: true, skip_empty_lines: true, trim: true });
-  const detectedColumns = records.length > 0 ? Object.keys(records[0]) : [];
+  const detectedColumns = records.length > 0
+    ? Object.keys(records[0]).filter((col) => col && !col.startsWith('__EMPTY'))
+    : [];
   return { rows: records, detectedColumns, sheetNames: null, activeSheet: null };
 }
 
@@ -38,7 +41,9 @@ function readExcel(filePath, sheetName) {
   const activeSheet = sheetName || sheetNames[0];
   const sheet = workbook.Sheets[activeSheet];
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-  const detectedColumns = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const detectedColumns = rows.length > 0
+    ? Object.keys(rows[0]).filter((col) => col && !col.startsWith('__EMPTY'))
+    : [];
   return { rows, detectedColumns, sheetNames, activeSheet };
 }
 
@@ -52,7 +57,8 @@ function applyMapping(rawRow, columnMapping) {
   const mapped = {};
   for (const [uploadedColumn, crmField] of Object.entries(columnMapping)) {
     if (!crmField) continue; // ignored column
-    mapped[crmField] = rawRow[uploadedColumn] != null ? String(rawRow[uploadedColumn]).trim() : '';
+    const val = rawRow[uploadedColumn] ?? rawRow[uploadedColumn.trim()] ?? '';
+    mapped[crmField] = val != null ? String(val).trim() : '';
   }
   if (mapped.Contact) {
     if (mapped.Contact.includes('@') && !mapped.Email) mapped.Email = mapped.Contact.toLowerCase();
@@ -63,11 +69,10 @@ function applyMapping(rawRow, columnMapping) {
   return mapped;
 }
 
-async function validateRow(mapped, rowNumber, stageNameToId, seenInBatch, ClientModel = Client) {
+async function validateRow(mapped, rowNumber, stageNameToId, seenInBatch, LeadModel = Lead) {
   const errors = [];
 
   if (!mapped.Name) errors.push({ row: rowNumber, column: 'Name', value: '', reason: 'Name is required', suggestedFix: 'Provide a lead name' });
-  if (!mapped.Source) errors.push({ row: rowNumber, column: 'Source', value: '', reason: 'Source is required', suggestedFix: 'Provide a lead source' });
 
   if (!mapped.Phone && !mapped.Email) errors.push({ row: rowNumber, column: 'Contact', value: '', reason: 'A phone number or email is required', suggestedFix: 'Provide a valid phone number or email address' });
   if (mapped.Phone && (mapped.Phone.length < 7 || mapped.Phone.length > 15)) {
@@ -80,8 +85,35 @@ async function validateRow(mapped, rowNumber, stageNameToId, seenInBatch, Client
     }
   }
 
-  if (mapped.Source && !VALID_SOURCES.includes(mapped.Source.toLowerCase().replace(/[\s-]+/g, '_'))) {
-    errors.push({ row: rowNumber, column: 'Source', value: mapped.Source, reason: `Invalid source "${mapped.Source}"`, suggestedFix: `Use one of: ${VALID_SOURCES.join(', ')}` });
+  if (!mapped.Source) {
+    mapped.Source = 'other';
+  } else {
+    const cleanSource = mapped.Source.toLowerCase().replace(/[\s-]+/g, '_');
+    if (!VALID_SOURCES.includes(cleanSource)) {
+      const SOURCE_MAP = {
+        facebook: 'social_media',
+        fb: 'social_media',
+        instagram: 'social_media',
+        insta: 'social_media',
+        linkedin: 'social_media',
+        twitter: 'social_media',
+        meta: 'social_media',
+        social: 'social_media',
+        socialmedia: 'social_media',
+        google: 'website',
+        web: 'website',
+        site: 'website',
+        phone: 'call',
+        telephone: 'call',
+        mobile: 'call',
+        cold_call: 'call',
+        calling: 'call',
+        lead: 'other',
+      };
+      mapped.Source = SOURCE_MAP[cleanSource] || 'other';
+    } else {
+      mapped.Source = cleanSource;
+    }
   }
 
   if (mapped.Status && !VALID_STATUSES.includes(mapped.Status.toLowerCase())) {
@@ -110,7 +142,7 @@ async function validateRow(mapped, rowNumber, stageNameToId, seenInBatch, Client
       if (emailKey) contactConditions.push({ email: emailKey });
       if (phoneKey) contactConditions.push({ phone: phoneKey });
       const existing = contactConditions.length
-        ? await ClientModel.findOne({ $or: contactConditions }).select('_id')
+        ? await LeadModel.findOne({ $or: contactConditions }).select('_id')
         : null;
       if (existing) status = 'duplicate';
     }
@@ -164,6 +196,19 @@ async function processImport({ tempFilePath, fileType, sheetName, columnMapping,
   const stages = await Stage.find({ isActive: true }).select('name');
   const stageNameToId = new Map(stages.map((s) => [s.name.toLowerCase(), s._id]));
 
+  // Find the highest existing numerical LeadId to ensure unique sequential IDs across the batch
+  const allLeads = await Lead.find({ LeadId: { $exists: true } }).select('LeadId').lean();
+  let maxNum = 0;
+  for (const l of allLeads) {
+    if (typeof l.LeadId === 'string') {
+      const match = l.LeadId.match(/(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+  }
+
   let imported = 0;
   let updated = 0;
   let skipped = 0;
@@ -183,7 +228,7 @@ async function processImport({ tempFilePath, fileType, sheetName, columnMapping,
       company: row.data.Company || row.data.Name,
       email: row.data.Email || '',
       phone: row.data.Phone || '',
-      source: row.data.Source.toLowerCase().replace(/[\s-]+/g, '_'),
+      source: row.data.Source ? String(row.data.Source).toLowerCase().replace(/[\s-]+/g, '_') : 'other',
       address: { street: row.data.Address || '' },
       status: (row.data.Status || 'lead').toLowerCase(),
       projectValue: row.data.ProjectValue ? Number(row.data.ProjectValue) : 0,
@@ -194,44 +239,55 @@ async function processImport({ tempFilePath, fileType, sheetName, columnMapping,
     }
 
     if (row.status === 'duplicate') {
-      if (duplicateStrategy === 'skip') {
+      if (duplicateStrategy === 'skip' || duplicateStrategy === 'only_new') {
         skipped += 1;
         continue;
       }
-      if (duplicateStrategy === 'only_new') {
+      const orConditions = [
+        ...(doc.email ? [{ email: doc.email }] : []),
+        ...(doc.phone ? [{ phone: doc.phone }] : []),
+      ];
+      if (orConditions.length > 0) {
+        toUpdate.push({
+          filter: { $or: orConditions },
+          update: doc,
+        });
+      } else {
         skipped += 1;
-        continue;
       }
-      // 'update' or 'replace' — apply the same field update either way
-      // (a full "replace" isn't safe for a CRM record with relations, so
-      // we update matched fields rather than deleting+recreating).
-      toUpdate.push({
-        filter: { $or: [
-          ...(doc.email ? [{ email: doc.email }] : []),
-          ...(doc.phone ? [{ phone: doc.phone }] : []),
-        ] },
-        update: doc,
-      });
       continue;
     }
 
-    // valid, new record
-    doc.clientId = await Client.generateClientId();
-    doc.assignedTo = assignedTo || null;
-    doc.createdBy = userId;
-    doc.team = teamId || null;
+    // valid, new record with unique sequential LeadId
+    maxNum += 1;
+    doc.LeadId = `CLT-${String(maxNum).padStart(4, '0')}`;
+    doc.assignedTo = (assignedTo && mongoose.Types.ObjectId.isValid(assignedTo)) ? assignedTo : null;
+    doc.createdBy = (userId && mongoose.Types.ObjectId.isValid(userId)) ? userId : null;
+    doc.team = (teamId && mongoose.Types.ObjectId.isValid(teamId)) ? teamId : null;
     toInsert.push(doc);
   }
 
   if (toInsert.length > 0) {
-    const result = await Client.insertMany(toInsert, { ordered: false });
-    imported += result.length;
+    try {
+      const result = await Lead.insertMany(toInsert, { ordered: false });
+      imported += result.length;
+    } catch (insertError) {
+      const count = insertError.insertedDocs?.length ?? insertError.result?.nInserted ?? 0;
+      imported += count;
+      failed += (toInsert.length - count);
+      console.error('Lead.insertMany handled error:', insertError.message);
+    }
   }
 
   for (const { filter, update } of toUpdate) {
-    const result = await Client.updateOne(filter, { $set: update });
-    if (result.matchedCount > 0) updated += 1;
-    else skipped += 1;
+    try {
+      const result = await Lead.updateOne(filter, { $set: update });
+      if (result.matchedCount > 0) updated += 1;
+      else skipped += 1;
+    } catch (updateError) {
+      console.error('Lead.updateOne error:', updateError.message);
+      failed += 1;
+    }
   }
 
   // Clean up the temp file now that we're done with it

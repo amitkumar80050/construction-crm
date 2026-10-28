@@ -13,12 +13,12 @@ function safeRegister(key, loader) {
   }
 }
 
-// --- Leads / Clients ---
+// --- Leads / Leads ---
 safeRegister('leads', () => {
-  const Client = require('../models/Client'); // adjust if your model is named differently
+  const Lead = require('../models/Lead'); // adjust if your model is named differently
   return {
     label: 'Leads',
-    model: Client,
+    model: Lead,
     columns: [
       { key: 'name', label: 'Name' },
       { key: 'company', label: 'Company' },

@@ -1,12 +1,12 @@
 const whatsappService = require('../services/whatsappService');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
 
-// @desc  Start/init WhatsApp client (generates QR if not yet linked)
+// @desc  Start/init WhatsApp lead(generates QR if not yet linked)
 // @route POST /api/whatsapp/init
 // @access Private
 const init = (req, res) => {
   whatsappService.initWhatsApp();
-  res.status(200).json({ success: true, message: 'WhatsApp client initializing...' });
+  res.status(200).json({ success: true, message: 'WhatsApp leadinitializing...' });
 };
 
 // @desc  Get current connection status + QR (if pending)
@@ -24,7 +24,7 @@ const logout = (req, res) => {
   res.status(200).json({ success: true, message: 'WhatsApp disconnected.' });
 };
 
-// @desc  Send a message to a client's phone
+// @desc  Send a message to a Lead's phone
 // @route POST /api/whatsapp/send
 // @access Private
 const sendMessage = async (req, res) => {
@@ -40,12 +40,11 @@ const sendMessage = async (req, res) => {
   }
 };
 
-// @desc  Get chat history for a specific client
-// @route GET /api/whatsapp/messages/:clientId
-// @access Private
-const getMessagesByClient = async (req, res) => {
+// @desc  Get chat history for a specific Lead
+// @route GET /api/whatsapp/messages/:LeadId
+const getMessagesByLead = async (req, res) => {
   try {
-    const messages = await WhatsAppMessage.find({ client: req.params.clientId })
+    const messages = await WhatsAppMessage.find({ Lead: req.params.LeadId })
       .sort({ createdAt: 1 })
       .lean();
     res.status(200).json({ success: true, data: messages });
@@ -53,5 +52,6 @@ const getMessagesByClient = async (req, res) => {
     res.status(500).json({ success: false, message: 'Unable to load messages.' });
   }
 };
+const getMessagesBylead = getMessagesByLead;
 
-module.exports = { init, getStatus, logout, sendMessage, getMessagesByClient };
+module.exports = { init, getStatus, logout, sendMessage, getMessagesByLead, getMessagesBylead };

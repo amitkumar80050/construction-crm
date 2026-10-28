@@ -10,7 +10,7 @@ const roleSchema = new mongoose.Schema({
     type: String,
   },
   permissions: {
-    clients: {
+    Leads: {
       view: { type: Boolean, default: false },
       create: { type: Boolean, default: false },
       edit: { type: Boolean, default: false },

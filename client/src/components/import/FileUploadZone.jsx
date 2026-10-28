@@ -16,6 +16,7 @@ const FileUploadZone = ({ onFileSelected, uploading }) => {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
     },
     maxFiles: 1,
+    preventDropOnDocument: false,
   });
 
   return (

@@ -4,7 +4,9 @@ const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/visitUploadMiddleware');
 const ctrl = require('../controllers/siteVisitController.js.js');
 
+router.get('/', protect, ctrl.getAllVisits);
 router.get('/my', protect, ctrl.getMyVisits);
+router.get('/reverse-geocode', protect, ctrl.reverseGeocode);
 router.get('/:id', protect, ctrl.getVisit);
 router.post('/:id/complete', protect, upload.single('photo'), ctrl.completeVisit);
 router.post('/:id/not-done', protect, ctrl.markNotDone);

@@ -62,7 +62,7 @@ const UserPerformance = () => {
                 <tr key={p.userId} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '10px', fontWeight: 500, color: '#1e293b' }}>{p.name}</td>
                   <td style={{ padding: '10px', color: '#64748b', textTransform: 'capitalize' }}>{p.role}</td>
-                  <td style={{ padding: '10px', textAlign: 'right', color: '#475569' }}>{p.clientsAssigned}</td>
+                  <td style={{ padding: '10px', textAlign: 'right', color: '#475569' }}>{p.LeadsAssigned}</td>
                   <td style={{ padding: '10px', textAlign: 'right', color: '#475569' }}>{p.leadsConverted}</td>
                   <td style={{ padding: '10px', textAlign: 'right' }}>
                     <span style={{

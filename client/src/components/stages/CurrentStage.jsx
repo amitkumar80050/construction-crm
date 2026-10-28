@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaLayerGroup } from 'react-icons/fa';
 import StageTimeline from './StageTimeline';
 
-const CurrentStage = ({ clientId, clientName, currentStage, onStageMoved }) => {
+const CurrentStage = ({ LeadId, LeadName, currentStage, onStageMoved }) => {
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [stage, setStage] = useState(currentStage);
 
@@ -13,11 +13,11 @@ const CurrentStage = ({ clientId, clientName, currentStage, onStageMoved }) => {
 
   const handleClose = () => setTimelineOpen(false);
 
-  const handleStageMoved = (updatedClient) => {
-    if (updatedClient?.currentStage) {
-      setStage(updatedClient.currentStage);
+  const handleStageMoved = (updatedLead) => {
+    if (updatedLead?.currentStage) {
+      setStage(updatedLead.currentStage);
     }
-    if (onStageMoved) onStageMoved(updatedClient);
+    if (onStageMoved) onStageMoved(updatedLead);
   };
 
   const color = stage?.color || '#64748b';
@@ -45,8 +45,8 @@ const CurrentStage = ({ clientId, clientName, currentStage, onStageMoved }) => {
       </button>
 
       <StageTimeline
-        clientId={clientId}
-        clientName={clientName}
+        LeadId={LeadId}
+        LeadName={LeadName}
         currentStage={stage}
         isOpen={timelineOpen}
         onClose={handleClose}

@@ -2,15 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { FaPlus, FaTimes, FaUser, FaCheck } from 'react-icons/fa';
 import reminderService from '../../services/reminderService';
-import clientService from '../../services/clientService';
+import Leadservice from '../../services/leadService';
 
-const AddReminder = ({ clientId, onAdded, onCancel }) => {
-  // If a clientId was passed in directly (e.g. opened from a specific client's
+const AddReminder = ({ LeadId, onAdded, onCancel }) => {
+  // If a LeadId was passed in directly (e.g. opened from a specific Lead's
   // page), skip the search UI entirely and use it as-is.
-  const preselected = !!clientId;
+  const preselected = !!LeadId;
 
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [clientNameInput, setClientNameInput] = useState('');
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [LeadNameInput, setLeadNameInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef(null);
@@ -28,22 +28,22 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Load the preselected client's display info, if one was passed in
+  // Load the preselected Lead's display info, if one was passed in
   useEffect(() => {
     const loadPreselected = async () => {
       if (!preselected) return;
       try {
-        const res = await clientService.getClient(clientId);
-        setSelectedClient(res.data?.data || null);
+        const res = await Leadservice.getLead(LeadId);
+        setSelectedLead(res.data?.data || null);
       } catch (error) {
-        // Non-fatal — form still works, just won't show the client name
+        // Non-fatal — form still works, just won't show the leadname
       }
     };
     loadPreselected();
-  }, [clientId, preselected]);
+  }, [LeadId, preselected]);
 
-  // Debounced client search by name (also matches company/email, per your
-  // existing clientService.getClients search param)
+  // Debounced leadsearch by name (also matches company/email, per your
+  // existing Leadservice.getLeads search param)
   const runSearch = useCallback(async (term) => {
     if (!term.trim()) {
       setSearchResults([]);
@@ -51,7 +51,7 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
     }
     setSearching(true);
     try {
-      const res = await clientService.getClients({ search: term.trim(), limit: 6 });
+      const res = await Leadservice.getLeads({ search: term.trim(), limit: 6 });
       setSearchResults(res.data?.data || []);
     } catch (error) {
       setSearchResults([]);
@@ -61,32 +61,32 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
   }, []);
 
   const handleNameInputChange = (value) => {
-    setClientNameInput(value);
-    setSelectedClient(null); // typing again clears any previous selection
+    setLeadNameInput(value);
+    setSelectedLead(null); // typing again clears any previous selection
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => runSearch(value), 300);
   };
 
-  const handleSelectClient = (client) => {
-    setSelectedClient(client);
-    setClientNameInput(client.name);
+  const handleSelectlead = (Lead) => {
+    setSelectedLead(Lead);
+    setLeadNameInput(Lead.name);
     setSearchResults([]);
   };
 
-  const handleClearClient = () => {
-    setSelectedClient(null);
-    setClientNameInput('');
+  const handleClearlead = () => {
+    setSelectedLead(null);
+    setLeadNameInput('');
     setSearchResults([]);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const targetClientId = clientId || selectedClient?._id;
+    const targetLeadId = LeadId || selectedLead?._id;
 
-    if (!targetClientId) {
-      toast.error('Please search and select a client by name');
+    if (!targetLeadId) {
+      toast.error('Please search and select a leadby name');
       return;
     }
     if (!form.title.trim() || !form.dueDate) {
@@ -97,7 +97,7 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
     setSubmitting(true);
     try {
       const res = await reminderService.createReminder({
-        client: targetClientId,
+        Lead: targetLeadId,
         title: form.title.trim(),
         description: form.description.trim(),
         dueDate: form.dueDate,
@@ -110,7 +110,7 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
       toast.success('Reminder added successfully!');
       setForm({ title: '', description: '', dueDate: '', priority: 'medium', type: 'task' });
       if (!preselected) {
-        handleClearClient();
+        handleClearLead();
       }
 
       if (onAdded) onAdded(created);
@@ -146,33 +146,33 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
         )}
       </div>
 
-      {/* Client — single text input, searches by name as you type */}
+      {/* lead— single text input, searches by name as you type */}
       {!preselected && (
         <div style={{ marginBottom: '12px' }}>
           <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, fontSize: '13px', color: '#1e293b' }}>
-            Client Name *
+            leadName *
           </label>
 
           <div style={{ position: 'relative' }}>
             <input
               type="text"
-              value={clientNameInput}
+              value={LeadNameInput}
               onChange={(e) => handleNameInputChange(e.target.value)}
-              placeholder="Type client name to search..."
+              placeholder="Type leadname to search..."
               autoComplete="off"
               style={{
                 width: '100%',
-                padding: selectedClient ? '10px 36px 10px 10px' : '10px',
-                border: `1px solid ${selectedClient ? '#93c5fd' : '#e2e8f0'}`,
+                padding: selectedlead ? '10px 36px 10px 10px' : '10px',
+                border: `1px solid ${selectedlead ? '#93c5fd' : '#e2e8f0'}`,
                 borderRadius: '8px',
-                background: selectedClient ? '#eff6ff' : 'white'
+                background: selectedlead ? '#eff6ff' : 'white'
               }}
             />
-            {selectedClient && (
+            {selectedlead && (
               <button
                 type="button"
-                onClick={handleClearClient}
-                title="Change client"
+                onClick={handleClearLead}
+                title="Change Lead"
                 style={{
                   position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer', color: '#64748b',
@@ -184,27 +184,27 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
             )}
           </div>
 
-          {selectedClient && (
+          {selectedlead && (
             <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#16a34a' }}>
-              <FaCheck size={10} /> {selectedClient.company} · {selectedClient.email}
+              <FaCheck size={10} /> {selectedLead.company} · {selectedLead.email}
             </div>
           )}
 
           {/* Plain inline match list — not an overlay dropdown */}
-          {!selectedClient && clientNameInput.trim() && (
+          {!selectedlead && LeadNameInput.trim() && (
             <div style={{ marginTop: '8px' }}>
               {searching ? (
                 <div style={{ fontSize: '13px', color: '#94a3b8', padding: '6px 0' }}>Searching...</div>
               ) : searchResults.length === 0 ? (
                 <div style={{ fontSize: '13px', color: '#94a3b8', padding: '6px 0' }}>
-                  No matching clients found.
+                  No matching Leads found.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {searchResults.map((client) => (
+                  {searchResults.map((Lead) => (
                     <div
-                      key={client._id}
-                      onClick={() => handleSelectClient(client)}
+                      key={Lead._id}
+                      onClick={() => handleSelectLead(Lead)}
                       style={{
                         padding: '8px 10px',
                         background: 'white',
@@ -220,9 +220,9 @@ const AddReminder = ({ clientId, onAdded, onCancel }) => {
                     >
                       <FaUser size={11} color="#94a3b8" />
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 500, color: '#1e293b' }}>{client.name}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 500, color: '#1e293b' }}>{Lead.name}</div>
                         <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                          {client.company} {client.email ? `· ${client.email}` : ''}
+                          {Lead.company} {Lead.email ? `· ${Lead.email}` : ''}
                         </div>
                       </div>
                     </div>

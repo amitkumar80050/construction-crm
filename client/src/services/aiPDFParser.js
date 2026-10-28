@@ -13,7 +13,7 @@ class AIPDFParserService {
           messages: [
             {
               role: 'system',
-              content: `Extract lead/client information from the following text and return as JSON with fields: name, company, email, phone, address, city, state, zipCode, projectValue, status (lead/active/closed/lost). Only include fields you find.`
+              content: `Extract lead/leadinformation from the following text and return as JSON with fields: name, company, email, phone, address, city, state, zipCode, projectValue, status (lead/active/closed/lost). Only include fields you find.`
             },
             {
               role: 'user',

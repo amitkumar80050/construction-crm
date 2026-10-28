@@ -1,6 +1,6 @@
 const Activity = require('../models/Activity');
 
-async function logActivity({ req, user, type, module, description, targetId, targetType, client, metadata }) {
+async function logActivity({ req, user, type, module, description, targetId, targetType, Lead, metadata }) {
   try {
     const actorId = user?._id || user?.id || user;
     await Activity.create({
@@ -12,7 +12,7 @@ async function logActivity({ req, user, type, module, description, targetId, tar
       description,
       targetId: targetId || null,
       targetType: targetType || null,
-      client: client || undefined,
+      Lead: Lead || undefined,
       ipAddress: req?.ip,
       userAgent: req?.get?.('user-agent') || req?.headers?.['user-agent'],
       metadata,

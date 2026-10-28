@@ -31,3 +31,11 @@ test('lead import accepts either a valid phone or email as contact', async () =>
   assert.equal(emailOnly.status, 'valid');
   assert.equal(phoneOnly.status, 'valid');
 });
+
+test('lead import defaults missing or ad platform sources without erroring', async () => {
+  const noSource = await validateRow({ Name: 'John Doe', Phone: '9876543210' }, 2, new Map(), seenInBatch(), noExistingLead);
+  assert.equal(noSource.status, 'valid');
+
+  const fbSource = await validateRow({ Name: 'Jane Doe', Phone: '9876543211', Source: 'Facebook' }, 3, new Map(), seenInBatch(), noExistingLead);
+  assert.equal(fbSource.status, 'valid');
+});

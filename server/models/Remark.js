@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const remarkSchema = new mongoose.Schema({
-  client: {
+  Lead: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Client',
+    ref: 'Lead',
     required: true,
   },
   user: {

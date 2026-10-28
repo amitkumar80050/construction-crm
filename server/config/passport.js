@@ -2,11 +2,11 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
 
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+if (process.env.GOOGLE_Lead_ID && process.env.GOOGLE_Lead_SECRET) {
   passport.use(new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      LeadID: process.env.GOOGLE_Lead_ID,
+      Leadsecret: process.env.GOOGLE_Lead_SECRET,
       callbackURL: '/api/auth/google/callback',
     },
     async (accessToken, refreshToken, profile, done) => {

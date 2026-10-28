@@ -5,8 +5,8 @@ const reminderService = {
     return await api.get('/reminders', { params });
   },
 
-  getRemindersByClient: async (clientId) => {
-    return await api.get('/reminders', { params: { client: clientId } });
+  getRemindersByLead: async (LeadId) => {
+    return await api.get('/reminders', { params: { Lead: LeadId } });
   },
 
   getReminder: async (id) => {

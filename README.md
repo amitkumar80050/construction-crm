@@ -1,18 +1,18 @@
 # Construction CRM System
 
-A comprehensive CRM system for construction companies to manage clients, track leads, manage remarks, stages, reminders, and analytics.
+A comprehensive CRM system for construction companies to manage Leads, track leads, manage remarks, stages, reminders, and analytics.
 
 For production Docker, Nginx, and Let's Encrypt setup, see [docs/Deployment.md](docs/Deployment.md). The module-by-module MERN adaptation guide is in [docs/MERN_Adaptation_Modules_2_to_11.md](docs/MERN_Adaptation_Modules_2_to_11.md).
 
 ## Features
 
 - **User Management**: Admin, Manager, and User roles with different permissions
-- **Client Management**: Add, edit, delete, and track clients
-- **Remark System**: Add and track remarks for each client
-- **Stage Management**: Track client progress through different stages
+- **leadManagement**: Add, edit, delete, and track Leads
+- **Remark System**: Add and track remarks for each Lead
+- **Stage Management**: Track leadprogress through different stages
 - **Reminder System**: Set and manage reminders for follow-ups
 - **Analytics Dashboard**: Visualize leads, conversions, and performance
-- **Calling Panel**: Manage client calls efficiently
+- **Calling Panel**: Manage leadcalls efficiently
 - **Import/Export**: Import and export data in various formats
 
 ## Technology Stack

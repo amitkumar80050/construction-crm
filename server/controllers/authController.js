@@ -65,6 +65,7 @@ const register = async (req, res) => {
         role: user.role,
         phone: user.phone,
         department: user.department,
+        teamIds: user.teamIds || [],
       },
     });
   } catch (error) {
@@ -162,6 +163,7 @@ await user.save({ validateBeforeSave: false });
         phone: user.phone,
         department: user.department,
         profilePicture: user.profilePicture,
+        teamIds: user.teamIds || [],
       },
     });
   } catch (error) {
@@ -226,6 +228,7 @@ const getMe = async (req, res) => {
         isActive: user.isActive,
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
+        teamIds: user.teamIds || [],
       },
     });
   } catch (error) {

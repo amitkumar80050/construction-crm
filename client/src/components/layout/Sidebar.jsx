@@ -5,7 +5,7 @@ import {
   FaHome, FaUsers, FaComment, FaLayerGroup, FaBell,
   FaChartBar, FaUserCog, FaCog, FaFileImport, FaFileExport,
   FaThumbtack, FaHistory, FaWhatsapp, FaUserFriends,
-  FaPhoneAlt, FaCompass, FaCalendarCheck, FaUserCheck, FaTachometerAlt, FaMapMarkerAlt, FaComments
+  FaPhoneAlt, FaCompass, FaCalendarCheck, FaCalendarAlt, FaUserCheck, FaTachometerAlt, FaMapMarkerAlt, FaComments
 } from 'react-icons/fa';
 import './Sidebar.css';
 
@@ -17,18 +17,16 @@ const Sidebar = ({ pinned, onTogglePin }) => {
   const isSalesExecutive = user?.role === 'sales executer';
   const isAuditor = user?.role === 'auditor';
   const isManagerOrAdmin = isAdmin || isManager;
-  const telecallerItems = [
-    { path: '/clients/new', icon: FaUsers, label: 'Add Lead' },
-  ];
+  const telecallerItems = [];
   const salesExecutiveItems = [
-    { path: '/my-visits', icon: FaMapMarkerAlt, label: 'Visits Calendar' },
+    { path: '/my-visits', icon: FaCalendarAlt, label: 'Visits Calendar' },
   ];
 
   const navItems = isAuditor ? [
     { path: '/logs', icon: FaHistory, label: 'Activity Logs' },
   ] : [
     { path: '/dashboard', icon: FaHome, label: 'Dashboard' },
-    { path: '/clients', icon: FaUsers, label: 'Leads' },
+    { path: '/Leads', icon: FaUsers, label: 'Leads' },
     ...(isTelecaller || isManagerOrAdmin ? [{ path: '/calling', icon: FaPhoneAlt, label: 'Calling Panel' }] : []),
     ...(isSalesExecutive || isManagerOrAdmin ? [{ path: '/site-visits', icon: FaCompass, label: isSalesExecutive ? 'My Site Visits' : 'Site Visits' }] : []),
     { path: '/attendance', icon: FaCalendarCheck, label: 'Attendance' },
@@ -37,13 +35,15 @@ const Sidebar = ({ pinned, onTogglePin }) => {
     { path: '/reminders', icon: FaBell, label: 'Reminders' },
     { path: '/analytics', icon: FaChartBar, label: 'Analytics' },
     { path: '/whatsapp', icon: FaWhatsapp, label: 'WhatsApp' },
-    { path: '/my-team', icon: FaUserFriends, label: 'My Team' },
+    { path: '/my-team', icon: FaComments, label: 'My Team & Chat' },
     { path: '/logs', icon: FaHistory, label: isAdmin ? 'Activity Logs' : 'My Logs' },
   ];
 
   const managerItems = [
     { path: '/manager-dashboard', icon: FaTachometerAlt, label: 'Team Dashboard' },
     { path: '/manager/leads', icon: FaUsers, label: 'Team Leads' },
+    { path: '/Leads/new', icon: FaUsers, label: 'Add Lead' },
+    { path: '/import', icon: FaFileImport, label: 'Import Leads' },
     { path: '/manager/team', icon: FaUserFriends, label: 'Team Members' },
     { path: '/manager/attendance', icon: FaUserCheck, label: 'Attendance Approvals' },
   ];
@@ -51,7 +51,7 @@ const Sidebar = ({ pinned, onTogglePin }) => {
   const adminItems = [
     { path: '/users', icon: FaUserCog, label: 'Users' },
     { path: '/teams', icon: FaUserFriends, label: 'Teams' },
-    { path: '/import', icon: FaFileImport, label: 'Import' },
+    { path: '/import', icon: FaFileImport, label: 'Import Leads' },
     { path: '/export', icon: FaFileExport, label: 'Export' },
   ];
 
@@ -59,8 +59,8 @@ const Sidebar = ({ pinned, onTogglePin }) => {
     <aside className={`sidebar ${pinned ? 'sidebar-pinned' : ''}`}>
       <div className="sidebar-brand">
         <h3 className="sidebar-brand-text">
-          <span className="sidebar-brand-icon">🏗️</span>
-          <span className="sidebar-brand-label">CRM</span>
+          <span className="sidebar-brand-icon"></span>
+          <span className="sidebar-brand-label">SUNGRID <span style={{ color: '#38bdf8' }}>ENERGY</span></span>
         </h3>
         <button
           type="button"

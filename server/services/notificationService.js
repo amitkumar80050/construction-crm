@@ -21,8 +21,8 @@ const sendWelcomeEmail = async (email, name) => {
       html: `
         <h1>Welcome to Construction CRM!</h1>
         <p>Hello ${name},</p>
-        <p>Your account has been successfully created. You can now log in to start managing your clients.</p>
-        <p>Login URL: ${config.clientUrl}/login</p>
+        <p>Your account has been successfully created. You can now log in to start managing your Leads.</p>
+        <p>Login URL: ${config.LeadUrl}/login</p>
         <p>Thank you for choosing Construction CRM!</p>
       `,
     });
@@ -33,7 +33,7 @@ const sendWelcomeEmail = async (email, name) => {
 
 const sendResetPasswordEmail = async (email, name, token) => {
   try {
-    const resetUrl = `${config.clientUrl}/reset-password/${token}`;
+    const resetUrl = `${config.LeadUrl}/reset-password/${token}`;
     await transporter.sendMail({
       from: `"Construction CRM" <himanshu.prpwebs@gmail.com>`,
       to: email,
@@ -75,7 +75,7 @@ const sendOtpEmail = async (email, name, otp, expiryMinutes) => {
 
 const sendReminderEmail = async (reminder) => {
   try {
-    const client = await reminder.populate('client', 'name company email');
+    const lead = await reminder.populate('Lead', 'name company email');
     await transporter.sendMail({
       from: `"Construction CRM Reminders" <himanshu.prpwebs@gmail.com>`,
       to: reminder.user.email,
@@ -83,12 +83,12 @@ const sendReminderEmail = async (reminder) => {
       html: `
         <h1>Reminder Notification</h1>
         <p><strong>Title:</strong> ${reminder.title}</p>
-        <p><strong>Client:</strong> ${reminder.client.name}</p>
-        <p><strong>Company:</strong> ${reminder.client.company}</p>
+        <p><strong>Lead:</strong> ${reminder.Lead.name}</p>
+        <p><strong>Company:</strong> ${reminder.Lead.company}</p>
         <p><strong>Due Date:</strong> ${new Date(reminder.dueDate).toLocaleString()}</p>
         <p><strong>Priority:</strong> ${reminder.priority}</p>
         ${reminder.description ? `<p><strong>Description:</strong> ${reminder.description}</p>` : ''}
-        <p><a href="${config.clientUrl}/clients/${reminder.client._id}">View Client</a></p>
+        <p><a href="${config.LeadUrl}/Leads/${reminder.Lead._id}">View Lead</a></p>
       `,
     });
   } catch (error) {
@@ -164,7 +164,7 @@ const sendLeadAssignmentEmail = async (user, lead) => {
     type: 'LEAD_ASSIGNED',
     title: 'Lead assigned to you',
     message: `${lead.name} has been assigned to you.`,
-    entityType: 'Client',
+    entityType: 'Lead',
     entityId: lead._id,
   });
   try {
@@ -183,7 +183,7 @@ const sendLeadStageNotificationEmail = async (user, lead) => {
     type: 'LEAD_SITE_VISIT_PLANNED',
     title: 'Lead is ready for a site visit',
     message: `${lead.name} has reached Site Visit Planned. Assign a Sales Executive to schedule the visit.`,
-    entityType: 'Client',
+    entityType: 'Lead',
     entityId: lead._id,
   });
   try {

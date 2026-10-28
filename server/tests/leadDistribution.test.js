@@ -1,18 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const User = require('../models/User');
 const { distributeLeads } = require('../controllers/leadDistributionController');
 
 test('distribution with no unassigned leads returns a successful empty result', async () => {
   const originalUserFind = User.find;
-  const originalClientFind = Client.find;
+  const originalLeadFind = Lead.find;
   let leadFilter;
 
   User.find = () => ({
     select: async () => [{ _id: 'telecaller-1', name: 'Taylor Caller', role: 'telecaller' }],
   });
-  Client.find = (filter) => {
+  Lead.find = (filter) => {
     leadFilter = filter;
     return { limit: async () => [] };
   };
@@ -40,6 +40,6 @@ test('distribution with no unassigned leads returns a successful empty result', 
     assert.deepEqual(leadFilter, { $or: [{ assignedTo: null }, { assignedTo: 'admin-1' }] });
   } finally {
     User.find = originalUserFind;
-    Client.find = originalClientFind;
+    Lead.find = originalLeadFind;
   }
 });

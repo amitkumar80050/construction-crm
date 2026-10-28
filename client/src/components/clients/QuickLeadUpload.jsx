@@ -6,29 +6,66 @@ import importService from '../../services/importService';
 import teamService from '../../services/teamService';
 import { useAuth } from '../../hooks/useAuth';
 
-const AUTO_MAP_ALIASES = {
-  Name: ['name', 'Name', 'lead name', 'client name', 'customer name', 'full name'],
-  Contact: ['contact', 'Contact', 'contact no', 'contact number', 'phone or email'],
-  Address: ['address', 'Address', 'location'],
-  Source: ['source', 'Source', 'lead source'],
-  Company: ['Company', 'company', 'company name', 'organization'],
-  Email: ['email', 'Email', 'email address', 'e-mail'],
-  Phone: ['phone', 'Phone', 'phone number', 'mobile', 'mobile number', 'contact number'],
-  Status: ['status', 'Status', 'lead status'],
-  Stage: ['stage', 'Stage', 'current stage'],
-  ProjectValue: ['project value', 'Project Value', 'budget', 'value', 'deal value'],
-  Notes: ['notes', 'Notes', 'remark', 'remarks', 'comment', 'comments'],
-  assignedTo: ['assigned to', 'assigned user', 'assigned employee', 'owner'],
+export const AUTO_MAP_ALIASES = {
+  Name: [
+    'name', 'lead name', 'leadname', 'customer name', 'customername',
+    'client name', 'clientname', 'full name', 'fullname', 'contact person',
+    'party name', 'lead', 'prospect name', 'customer', 'client'
+  ],
+  Phone: [
+    'phone', 'phone number', 'phonenumber', 'phone no', 'phone_no', 'phoneno', 'phone no.',
+    'mobile', 'mobile number', 'mobilenumber', 'mobile no', 'mobile_no', 'mobileno', 'mobile no.',
+    'cell', 'cell phone', 'cellphone', 'telephone', 'tel', 'whatsapp', 'whatsapp number',
+    'contact no', 'contact number', 'contactno', 'contact_number', 'contact no.'
+  ],
+  Email: [
+    'email', 'email address', 'emailaddress', 'e-mail', 'email id', 'email_id',
+    'emailid', 'email id.', 'mail', 'e-mail address', 'e-mail id'
+  ],
+  Contact: [
+    'contact', 'contact info', 'phone or email', 'contact details'
+  ],
+  Address: [
+    'address', 'location', 'site address', 'city', 'area', 'street', 'full address'
+  ],
+  Source: [
+    'source', 'lead source', 'leadsource', 'lead_source', 'source name',
+    'campaign', 'channel', 'platform', 'medium', 'origin', 'referral', 'utm_source'
+  ],
+  Company: [
+    'company', 'company name', 'companyname', 'organization', 'firm', 'business name'
+  ],
+  Status: [
+    'status', 'lead status', 'leadstatus'
+  ],
+  Stage: [
+    'stage', 'pipeline stage', 'current stage', 'pipelinestage'
+  ],
+  ProjectValue: [
+    'project value', 'projectvalue', 'budget', 'value', 'deal value', 'dealvalue',
+    'amount', 'estimated value', 'deal size'
+  ],
+  Notes: [
+    'notes', 'remark', 'remarks', 'comment', 'comments', 'description', 'message'
+  ],
+  assignedTo: [
+    'assigned to', 'assigned user', 'assigned employee', 'owner', 'assignedto'
+  ],
 };
 
-const REQUIRED_FIELDS = ['Name', 'Source'];
+const REQUIRED_FIELDS = ['Name'];
 
-function buildAutoMapping(detectedColumns) {
+export function buildAutoMapping(detectedColumns) {
   const mapping = {};
   detectedColumns.forEach((col) => {
-    const normalized = col.trim().toLowerCase();
+    const raw = String(col || '').trim().toLowerCase();
+    const clean = raw.replace(/[^a-z0-9]/g, '');
     for (const [field, aliases] of Object.entries(AUTO_MAP_ALIASES)) {
-      if (aliases.includes(normalized)) {
+      const isMatch = aliases.some((alias) => {
+        const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return raw === alias.toLowerCase() || clean === cleanAlias;
+      });
+      if (isMatch) {
         mapping[col] = field;
         break;
       }
@@ -85,20 +122,23 @@ const QuickLeadUpload = ({ onImported }) => {
 
       if (isExcel && data.sheetNames && data.sheetNames.length > 1) {
         toast.info('This file has multiple sheets — opening the full import wizard to select one.');
-        navigate('/import');
+        navigate('/import', { state: { preloaded: data } });
         return;
       }
 
       const mapping = buildAutoMapping(data.detectedColumns);
       const mappedFields = new Set(Object.values(mapping));
-      const missingRequired = REQUIRED_FIELDS.filter((field) => !mappedFields.has(field));
-      if (!['Contact', 'Phone', 'Email'].some((field) => mappedFields.has(field))) missingRequired.push('Contact (phone or email)');
+      const hasName = mappedFields.has('Name');
+      const hasContact = ['Contact', 'Phone', 'Email'].some((field) => mappedFields.has(field));
 
-      if (missingRequired.length > 0) {
+      if (!hasName || !hasContact) {
+        const missing = [];
+        if (!hasName) missing.push('Lead Name');
+        if (!hasContact) missing.push('Contact (phone or email)');
         toast.info(
-          `Couldn't auto-detect column(s) for: ${missingRequired.join(', ')}. Opening the full import wizard so you can map them manually.`
+          `Couldn't auto-detect column(s) for: ${missing.join(', ')}. Opening the full import wizard so you can map them manually.`
         );
-        navigate('/import');
+        navigate('/import', { state: { preloaded: data } });
         return;
       }
 
@@ -127,7 +167,7 @@ const QuickLeadUpload = ({ onImported }) => {
 
   const handleConfirmImport = async () => {
     if (!pendingImport) return;
-    if (['admin', 'manager'].includes(user?.role) && !teamId) {
+    if (user?.role === 'manager' && !teamId) {
       toast.error('Select a team before importing leads.');
       return;
     }

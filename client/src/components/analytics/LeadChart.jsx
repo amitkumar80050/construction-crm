@@ -42,20 +42,20 @@ const LeadChart = () => {
     return <p style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No lead data available.</p>;
   }
 
-  const { clientStats, stageDistribution, monthlyNewClients } = data;
+  const { Leadstats, stageDistribution, monthlyNewLeads } = data;
 
   const statusChartData = {
     labels: ['Leads', 'Active', 'Closed', 'Lost'],
     datasets: [
       {
-        data: [clientStats.leads, clientStats.active, clientStats.closed, clientStats.lost],
+        data: [Leadstats.leads, Leadstats.active, Leadstats.closed, Leadstats.lost],
         backgroundColor: ['#f59e0b', '#22c55e', '#8b5cf6', '#ef4444'],
         borderWidth: 2,
       },
     ],
   };
 
-  const monthlyLabels = (monthlyNewClients || []).map(
+  const monthlyLabels = (monthlyNewLeads || []).map(
     (m) => `${MONTH_NAMES[m._id.month - 1]} ${m._id.year}`
   );
   const monthlyChartData = {
@@ -63,7 +63,7 @@ const LeadChart = () => {
     datasets: [
       {
         label: 'New Leads',
-        data: (monthlyNewClients || []).map((m) => m.count),
+        data: (monthlyNewLeads || []).map((m) => m.count),
         backgroundColor: 'rgba(37, 99, 235, 0.5)',
         borderColor: '#2563eb',
         borderWidth: 2,

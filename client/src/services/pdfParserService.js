@@ -60,53 +60,53 @@ class PDFParserService {
     const patterns = {
       // Name patterns
       name: [
-        /(?:Name|Client Name|Customer Name|Lead Name)[\s:]+([^\n,]+)/i,
+        /(?:Name|leadName|Customer Name|Lead Name)[\s:]+([^\n,]+)/i,
         /(?:Contact|Contact Person)[\s:]+([^\n,]+)/i,
         /^([A-Z][a-z]+ [A-Z][a-z]+)/m
       ],
-      
+
       // Company patterns
       company: [
         /(?:Company|Organization|Business|Firm)[\s:]+([^\n,]+)/i,
         /(?:Company Name)[\s:]+([^\n,]+)/i
       ],
-      
+
       // Email patterns
       email: [
         /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
       ],
-      
+
       // Phone patterns
       phone: [
         /(?:Phone|Tel|Mobile|Contact)[\s:]+([\+\(]?[0-9\-\(\)\s]+)/i,
         /(\+?[\d\s\-\(\)]{10,})/i
       ],
-      
+
       // Address patterns
       address: [
         /(?:Address|Location)[\s:]+([^,\n]+(?:, [^,\n]+)?)/i,
         /(\d+ [A-Za-z0-9\s,]+(?:Avenue|Street|St|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd))/i
       ],
-      
+
       // City patterns
       city: [
         /(?:City)[\s:]+([A-Za-z\s]+)/i,
         /(?:,\s*)([A-Za-z\s]+)(?:,\s*[A-Z]{2})/i,
         /([A-Za-z\s]+)(?:,\s*[A-Z]{2}\s+\d{5})/i
       ],
-      
+
       // State patterns
       state: [
         /(?:State|Province)[\s:]+([A-Z]{2})/i,
         /(?:,\s*)([A-Z]{2})(?:\s+\d{5})/i
       ],
-      
+
       // Zip code patterns
       zipCode: [
         /(?:Zip|Postal)[\s:]+(\d{5}(?:-\d{4})?)/i,
         /\b(\d{5}(?:-\d{4})?)\b/
       ],
-      
+
       // Project value patterns
       projectValue: [
         /(?:Project Value|Budget|Amount|Cost)[\s:$]+([\d,]+\.?\d*)/i,
@@ -123,19 +123,19 @@ class PDFParserService {
           let value = match[1] || match[0];
           // Clean up the value
           value = value.trim();
-          
+
           // Remove trailing commas, colons, etc.
           value = value.replace(/[,:;]+$/, '');
-          
+
           // Handle special cases
           if (field === 'phone' && value) {
             value = value.replace(/\s+/g, ' ').trim();
           }
-          
+
           if (field === 'email' && value) {
             value = value.toLowerCase().trim();
           }
-          
+
           data[field] = value;
           break;
         }
@@ -144,7 +144,7 @@ class PDFParserService {
 
     // Additional intelligent extraction for address components
     this.extractAddressComponents(text, data);
-    
+
     // Try to extract project value from text more intelligently
     if (!data.projectValue) {
       const valueMatch = text.match(/(?:total|project|budget|amount|value)[\s:]*[$]?\s*([0-9,]+\.?[0-9]*)/i);
@@ -163,11 +163,11 @@ class PDFParserService {
     // If we have an address but no city/state/zip, try to parse it
     if (data.address && (!data.city || !data.state || !data.zipCode)) {
       const addressParts = data.address.split(',').map(part => part.trim());
-      
+
       if (addressParts.length >= 2) {
         const lastPart = addressParts[addressParts.length - 1].trim();
         const stateZipMatch = lastPart.match(/([A-Z]{2})\s+(\d{5}(?:-\d{4})?)/);
-        
+
         if (stateZipMatch) {
           data.state = stateZipMatch[1];
           data.zipCode = stateZipMatch[2];
@@ -184,15 +184,15 @@ class PDFParserService {
     try {
       // Extract text from PDF
       const text = await this.extractTextFromPDF(file);
-      
+
       // Extract structured data
       const extractedData = this.extractLeadData(text);
-      
+
       // Add the raw text as notes if no notes were found
       if (!extractedData.notes) {
         extractedData.notes = `Extracted from PDF: ${file.name}\n\n${text.substring(0, 500)}${text.length > 500 ? '...' : ''}`;
       }
-      
+
       return extractedData;
     } catch (error) {
       console.error('Error processing PDF:', error);

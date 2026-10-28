@@ -34,7 +34,7 @@ const CRM_FIELD_KEYS = [
 // Fallback auto-mapping: matches column headers to CRM fields by loose name matching.
 // Used only when no --mapping file is provided.
 const AUTO_MAP_ALIASES = {
-  name: ['name', 'lead name', 'client name', 'customer name', 'full name'],
+  name: ['name', 'lead name', 'leadname', 'customer name', 'full name'],
   company: ['company', 'company name', 'organization'],
   email: ['email', 'email address', 'e-mail'],
   phone: ['phone', 'phone number', 'mobile', 'mobile number', 'contact number'],

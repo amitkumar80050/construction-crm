@@ -1,21 +1,21 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Activity = require('../models/Activity');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const { createLead } = require('../controllers/leadController');
 const { validateCreateUser } = require('../validations/userValidation');
 const { auditViewer, isAllowedAuditorRequest } = require('../middleware/authMiddleware');
 
 test('creating a lead records an attributable audit event', async () => {
-  const originalFindOne = Client.findOne;
-  const originalGenerateClientId = Client.generateClientId;
-  const originalCreate = Client.create;
+  const originalFindOne = Lead.findOne;
+  const originalGenerateLeadId = Lead.generateLeadId;
+  const originalCreate = Lead.create;
   const originalActivityCreate = Activity.create;
   let activity;
 
-  Client.findOne = () => ({ select: async () => null });
-  Client.generateClientId = async () => 'CLT-9001';
-  Client.create = async (data) => ({ _id: 'lead-1', ...data });
+  Lead.findOne = () => ({ select: async () => null });
+  Lead.generateLeadId = async () => 'CLT-9001';
+  Lead.create = async (data) => ({ _id: 'lead-1', ...data });
   Activity.create = async (data) => { activity = data; };
 
   try {
@@ -38,15 +38,15 @@ test('creating a lead records an attributable audit event', async () => {
     assert.equal(activity.userIdSnapshot, 'CON-00021');
     assert.equal(activity.userNameSnapshot, 'Taylor Caller');
     assert.equal(activity.type, 'create');
-    assert.equal(activity.module, 'client');
+    assert.equal(activity.module, 'Lead');
     assert.equal(activity.targetId, 'lead-1');
-    assert.equal(activity.targetType, 'Client');
+    assert.equal(activity.targetType, 'Lead');
     assert.equal(activity.ipAddress, '127.0.0.1');
     assert.equal(activity.userAgent, 'test-agent');
   } finally {
-    Client.findOne = originalFindOne;
-    Client.generateClientId = originalGenerateClientId;
-    Client.create = originalCreate;
+    Lead.findOne = originalFindOne;
+    Lead.generateLeadId = originalGenerateLeadId;
+    Lead.create = originalCreate;
     Activity.create = originalActivityCreate;
   }
 });
@@ -66,7 +66,7 @@ test('only admins and auditors pass the organization-wide audit guard', () => {
     const result = { statusCode: null, next: false };
     auditViewer(
       { user: { role } },
-      { status(code) { result.statusCode = code; return this; }, json() {} },
+      { status(code) { result.statusCode = code; return this; }, json() { } },
       () => { result.next = true; },
     );
     return result;
@@ -81,7 +81,7 @@ test('Auditor API access is read-only and limited to audit and session data', ()
   assert.equal(isAllowedAuditorRequest({ method: 'GET', originalUrl: '/api/admin/logs?page=1' }), true);
   assert.equal(isAllowedAuditorRequest({ method: 'GET', originalUrl: '/api/auth/me' }), true);
   assert.equal(isAllowedAuditorRequest({ method: 'GET', originalUrl: '/api/notifications' }), true);
-  assert.equal(isAllowedAuditorRequest({ method: 'GET', originalUrl: '/api/clients' }), false);
+  assert.equal(isAllowedAuditorRequest({ method: 'GET', originalUrl: '/api/Leads' }), false);
   assert.equal(isAllowedAuditorRequest({ method: 'PUT', originalUrl: '/api/admin/logs' }), false);
   assert.equal(isAllowedAuditorRequest({ method: 'POST', originalUrl: '/api/auth/logout' }), true);
 });

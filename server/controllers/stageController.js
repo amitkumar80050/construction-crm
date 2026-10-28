@@ -1,7 +1,21 @@
 const Stage = require('../models/Stage');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const Activity = require('../models/Activity');
 const Remark = require('../models/Remark');
+const LeadStageHistory = require('../models/LeadStageHistory');
+
+function mapStageNameToPipeline(stageName) {
+  if (!stageName) return 'NEW';
+  const name = stageName.toLowerCase();
+  if (name.includes('site visit done') || name.includes('visit completed')) return 'SITE_VISIT_DONE';
+  if (name.includes('site visit')) return 'SITE_VISIT_PLANNED';
+  if (name.includes('follow')) return 'FOLLOW_UP';
+  if (name.includes('interest')) return 'INTERESTED';
+  if (name.includes('contact') || name.includes('connect')) return 'CONNECTED';
+  if (name.includes('quote') || name.includes('quotation') || name.includes('proposal') || name.includes('negotiat')) return 'QUOTATION';
+  if (name.includes('close') || name.includes('convert')) return 'CONVERTED';
+  return 'NEW';
+}
 
 const DEFAULT_STAGES = [
   { name: 'New', order: 1, color: '#3b82f6', description: 'Newly captured lead' },
@@ -154,11 +168,11 @@ const deleteStage = async (req, res) => {
     }
 
     // Check if stage is in use
-    const clientsUsingStage = await Client.countDocuments({ currentStage: stage._id });
-    if (clientsUsingStage > 0) {
+    const LeadsUsingStage = await Lead.countDocuments({ currentStage: stage._id });
+    if (LeadsUsingStage > 0) {
       return res.status(400).json({
         success: false,
-        message: `Cannot delete stage as it is being used by ${clientsUsingStage} leads`,
+        message: `Cannot delete stage as it is being used by ${LeadsUsingStage} leads`,
       });
     }
 
@@ -184,13 +198,13 @@ const deleteStage = async (req, res) => {
   }
 };
 
-// @desc    Get stage change history for a client
-// @route   GET /api/stages/history/:clientId
+// @desc    Get stage change history for a Lead
+// @route   GET /api/stages/history/:LeadId
 // @access  Private
-const getClientStageHistory = async (req, res) => {
+const getLeadstageHistory = async (req, res) => {
   try {
     const history = await Activity.find({
-      client: req.params.clientId,
+      Lead: req.params.LeadId,
       module: 'stage',
     })
       .populate('user', 'name email role')
@@ -210,18 +224,18 @@ const getClientStageHistory = async (req, res) => {
   }
 };
 
-// @desc    Update client stage with role-based validation and notes
-// @route   PUT /api/stages/client/:clientId
+// @desc    Update leadstage with role-based validation and notes
+// @route   PUT /api/stages/Lead/:LeadId
 // @access  Private
-const updateClientStage = async (req, res) => {
+const updateLeadstage = async (req, res) => {
   try {
     const { stageId, notes, followUpDate } = req.body;
-    const client = await Client.findById(req.params.clientId);
+    const leadDoc = await Lead.findById(req.params.LeadId);
 
-    if (!client) {
+    if (!leadDoc) {
       return res.status(404).json({
         success: false,
-        message: 'Lead/Client not found',
+        message: 'Lead not found',
       });
     }
 
@@ -270,17 +284,35 @@ const updateClientStage = async (req, res) => {
     }
 
     // Apply stage change
-    client.currentStage = stageId;
-    client.lastContactDate = new Date();
+    leadDoc.currentStage = stageId;
+    leadDoc.lastContactDate = new Date();
     if (followUpDate) {
-      client.nextContactDate = new Date(followUpDate);
+      leadDoc.nextContactDate = new Date(followUpDate);
+      leadDoc.followUpDate = new Date(followUpDate);
     }
-    await client.save();
+
+    const oldStage = leadDoc.pipelineStage || 'NEW';
+    const mappedPipelineStage = mapStageNameToPipeline(targetStage.name);
+    leadDoc.pipelineStage = mappedPipelineStage;
+    if (mappedPipelineStage === 'CONVERTED') leadDoc.status = 'closed';
+    else if (['CONNECTED', 'INTERESTED', 'FOLLOW_UP', 'SITE_VISIT_PLANNED', 'SITE_VISIT_DONE', 'QUOTATION'].includes(mappedPipelineStage)) {
+      if (leadDoc.status === 'lead') leadDoc.status = 'active';
+    }
+
+    await leadDoc.save();
+
+    await LeadStageHistory.create({
+      lead: leadDoc._id,
+      oldStage,
+      newStage: mappedPipelineStage,
+      changedBy: req.user._id,
+      notes: notes || `Moved to ${targetStage.name}`,
+    });
 
     // Create a Remark entry if notes provided
     if (notes && notes.trim()) {
       await Remark.create({
-        client: client._id,
+        Lead: leadDoc._id,
         user: req.user._id,
         content: `[Stage changed to ${targetStage.name}]: ${notes}`,
         type: targetStageName.includes('follow') ? 'follow-up' : 'call',
@@ -291,23 +323,23 @@ const updateClientStage = async (req, res) => {
     // Log Activity
     await Activity.create({
       user: req.user._id,
-      client: client._id,
+      Lead: leadDoc._id,
       type: 'update',
       module: 'stage',
-      description: `Updated ${client.name} stage to ${targetStage.name}${notes ? ` ("${notes}")` : ''}`,
+      description: `Updated ${leadDoc.name} stage to ${targetStage.name}${notes ? ` ("${notes}")` : ''}`,
     });
 
-    const updatedClient = await Client.findById(client._id)
+    const updatedLead = await Lead.findById(leadDoc._id)
       .populate('assignedTo', 'name email')
       .populate('currentStage', 'name color order');
 
     res.status(200).json({
       success: true,
       message: `Lead advanced to ${targetStage.name}`,
-      data: updatedClient,
+      data: updatedLead,
     });
   } catch (error) {
-    console.error('updateClientStage error:', error);
+    console.error('updateLeadstage error:', error);
     res.status(500).json({
       success: false,
       message: 'Server Error updating stage',
@@ -322,7 +354,7 @@ module.exports = {
   createStage,
   updateStage,
   deleteStage,
-  updateClientStage,
-  getClientStageHistory,
+  updateLeadstage,
+  getLeadstageHistory,
   ensureStandardStages,
 };

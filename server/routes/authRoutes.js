@@ -15,19 +15,19 @@ const {
   updateProfile,
   changePassword,
   verifyUserOtp,
-  resendUserOtp, 
+  resendUserOtp,
 } = require('../controllers/authController');
 
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+const Lead_URL = process.env.Lead_URL || 'http://localhost:3000';
 
 const handleOAuthCallback = (req, res) => {
   const token = generateToken(req.user._id, req.user.role);
-  res.redirect(`${CLIENT_URL}/oauth-success?token=${token}`);
+  res.redirect(`${Lead_URL}/oauth-success?token=${token}`);
 };
 
 // --- Google ---
 router.get('/google', (req, res, next) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  if (!process.env.GOOGLE_Lead_ID || !process.env.GOOGLE_Lead_SECRET) {
     return res.status(503).json({ success: false, message: 'Google sign-in is not configured yet' });
   }
   passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
@@ -35,7 +35,7 @@ router.get('/google', (req, res, next) => {
 
 // --- GitHub ---
 router.get('/github', (req, res, next) => {
-  if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
+  if (!process.env.GITHUB_Lead_ID || !process.env.GITHUB_Lead_SECRET) {
     return res.status(503).json({ success: false, message: 'GitHub sign-in is not configured yet' });
   }
   passport.authenticate('github', { scope: ['user:email'], session: false })(req, res, next);
@@ -43,18 +43,18 @@ router.get('/github', (req, res, next) => {
 
 router.get('/github/callback',
   (req, res, next) => {
-    if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
-      return res.redirect(`${CLIENT_URL}/login?error=github_not_configured`);
+    if (!process.env.GITHUB_Lead_ID || !process.env.GITHUB_Lead_SECRET) {
+      return res.redirect(`${Lead_URL}/login?error=github_not_configured`);
     }
     next();
   },
-  passport.authenticate('github', { session: false, failureRedirect: `${CLIENT_URL}/login?error=github_failed` }),
+  passport.authenticate('github', { session: false, failureRedirect: `${Lead_URL}/login?error=github_failed` }),
   handleOAuthCallback
 );
 
 // --- LinkedIn ---
 router.get('/linkedin', (req, res, next) => {
-  if (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET) {
+  if (!process.env.LINKEDIN_Lead_ID || !process.env.LINKEDIN_Lead_SECRET) {
     return res.status(503).json({ success: false, message: 'LinkedIn sign-in is not configured yet' });
   }
   passport.authenticate('linkedin', { session: false })(req, res, next);
@@ -62,30 +62,30 @@ router.get('/linkedin', (req, res, next) => {
 
 router.get('/linkedin/callback',
   (req, res, next) => {
-    if (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET) {
-      return res.redirect(`${CLIENT_URL}/login?error=linkedin_not_configured`);
+    if (!process.env.LINKEDIN_Lead_ID || !process.env.LINKEDIN_Lead_SECRET) {
+      return res.redirect(`${Lead_URL}/login?error=linkedin_not_configured`);
     }
     next();
   },
-  passport.authenticate('linkedin', { session: false, failureRedirect: `${CLIENT_URL}/login?error=linkedin_failed` }),
+  passport.authenticate('linkedin', { session: false, failureRedirect: `${Lead_URL}/login?error=linkedin_failed` }),
   handleOAuthCallback
 );
 
 router.get('/google/callback',
   (req, res, next) => {
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-      return res.redirect(`${CLIENT_URL}/login?error=google_not_configured`);
+    if (!process.env.GOOGLE_Lead_ID || !process.env.GOOGLE_Lead_SECRET) {
+      return res.redirect(`${Lead_URL}/login?error=google_not_configured`);
     }
     next();
   },
   (req, res, next) => {
     passport.authenticate('google', { session: false }, async (err, user, info) => {
       if (err) {
-        return res.redirect(`${CLIENT_URL}/login?error=google_failed`);
+        return res.redirect(`${Lead_URL}/login?error=google_failed`);
       }
       if (!user) {
         const reason = info?.message || 'not_registered';
-        return res.redirect(`${CLIENT_URL}/login?error=${reason}`);
+        return res.redirect(`${Lead_URL}/login?error=${reason}`);
       }
 
       try {
@@ -96,10 +96,10 @@ router.get('/google/callback',
         await sendOtpEmail(user.email, user.name, otp, otpService.OTP_EXPIRY_MINUTES);
 
         const preAuthToken = otpController.issuePreAuthToken(user._id.toString());
-        return res.redirect(`${CLIENT_URL}/verify-otp?preAuthToken=${preAuthToken}&email=${encodeURIComponent(user.email)}&expiresIn=${expiresInSeconds}`);
+        return res.redirect(`${Lead_URL}/verify-otp?preAuthToken=${preAuthToken}&email=${encodeURIComponent(user.email)}&expiresIn=${expiresInSeconds}`);
       } catch (e) {
         console.error(e);
-        return res.redirect(`${CLIENT_URL}/login?error=otp_send_failed`);
+        return res.redirect(`${Lead_URL}/login?error=otp_send_failed`);
       }
     })(req, res, next);
   }

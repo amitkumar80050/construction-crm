@@ -28,10 +28,10 @@ const Header = () => {
 
   const initials = user?.name
     ? user.name
-        .split(' ')
-        .map((part) => part[0])
-        .join('')
-        .toUpperCase()
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
     : 'U';
 
   const fetchNotifications = useCallback(async () => {
@@ -74,8 +74,8 @@ const Header = () => {
       navigate('/site-visits');
     } else if (n.type?.includes('attendance') || n.targetType === 'Attendance') {
       navigate(user?.role === 'manager' || user?.role === 'admin' ? '/manager/attendance' : '/attendance');
-    } else if (n.type?.includes('lead') || n.targetType === 'Client') {
-      navigate('/clients');
+    } else if (n.type?.includes('lead') || n.targetType === 'Lead') {
+      navigate('/Leads');
     } else {
       navigate('/dashboard');
     }
@@ -110,15 +110,33 @@ const Header = () => {
     <header className="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
       <div className="container-fluid px-4">
         <Link to="/dashboard" className="navbar-brand mb-0 h4 d-flex align-items-center gap-2">
-          🏗️ <span>BuildTrack <span className="text-primary">Pro</span></span>
+          <span>SUNGRID <span className="text-primary"></span> <span className="badge bg-primary-subtle text-primary border" style={{ fontSize: '11px', fontWeight: 600 }}>CRM</span></span>
         </Link>
 
         <div className="d-flex align-items-center gap-2">
+          {/* Active Role Pill */}
+          {user && (
+            <div
+              className="d-none d-md-flex align-items-center gap-1 px-2 py-1 rounded-pill"
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                background: user.role === 'admin' ? '#f5f3ff' : user.role === 'manager' ? '#eff6ff' : user.role === 'telecaller' ? '#fffbeb' : '#f0fdf4',
+                color: user.role === 'admin' ? '#6d28d9' : user.role === 'manager' ? '#1d4ed8' : user.role === 'telecaller' ? '#b45309' : '#15803d',
+                border: `1px solid ${user.role === 'admin' ? '#ddd6fe' : user.role === 'manager' ? '#bfdbfe' : user.role === 'telecaller' ? '#fde68a' : '#bbf7d0'}`,
+              }}
+              title="Active Role"
+            >
+              <span>{user.role === 'admin' ? '👑' : user.role === 'manager' ? '👔' : user.role === 'telecaller' ? '📞' : '🚗'}</span>
+              <span style={{ textTransform: 'capitalize' }}>{user.role === 'sales executer' ? 'Sales Exec' : user.role}</span>
+            </div>
+          )}
+
           <button
             type="button"
             className="btn btn-outline-secondary btn-sm"
             onClick={() => setAboutOpen(true)}
-            title="About BuildTrack Pro"
+            title="About SUNGRID ENERGY"
           >
             <FaInfoCircle />
           </button>
@@ -221,7 +239,7 @@ const Header = () => {
               </div>
               <div className="d-none d-sm-block text-start">
                 <div className="fw-semibold" style={{ fontSize: '13px', lineHeight: 1.1 }}>{user?.name || 'User'}</div>
-                <small className="text-muted" style={{ fontSize: '11px', textTransform: 'capitalize' }}>{user?.role || 'Guest'}</small>
+                <small className="text-muted" style={{ fontSize: '11px', textTransform: 'capitalize' }}>{user?.role === 'sales executer' ? 'Sales Exec' : user?.role || 'Guest'}</small>
               </div>
               <FaChevronDown size={10} color="#94a3b8" />
             </button>
@@ -229,26 +247,40 @@ const Header = () => {
             {profileOpen && (
               <div
                 className="position-absolute end-0 mt-2 bg-white shadow rounded-3 border"
-                style={{ width: '200px', zIndex: 1050 }}
+                style={{ width: '230px', zIndex: 1050 }}
               >
+                <div className="px-3 py-2 border-bottom bg-light">
+                  <div className="fw-bold" style={{ fontSize: '13px' }}>{user?.name}</div>
+                  <div className="text-muted text-truncate" style={{ fontSize: '11px' }}>{user?.email}</div>
+                  <span
+                    className="badge mt-1"
+                    style={{
+                      background: user?.role === 'admin' ? '#7c3aed' : user?.role === 'manager' ? '#2563eb' : user?.role === 'telecaller' ? '#d97706' : '#16a34a',
+                      fontSize: '10px'
+                    }}
+                  >
+                    {user?.role?.toUpperCase()}
+                  </span>
+                </div>
+
                 <button
                   onClick={() => { setProfileOpen(false); navigate('/profile'); }}
                   className="btn btn-link text-decoration-none w-100 text-start d-flex align-items-center gap-2 px-3 py-2"
-                  style={{ color: '#1e293b', fontSize: '14px' }}
+                  style={{ color: '#1e293b', fontSize: '13px' }}
                 >
                   <FaUserCircle size={14} /> My Profile
                 </button>
                 <button
                   onClick={() => { setProfileOpen(false); navigate('/attendance'); }}
                   className="btn btn-link text-decoration-none w-100 text-start d-flex align-items-center gap-2 px-3 py-2"
-                  style={{ color: '#1e293b', fontSize: '14px' }}
+                  style={{ color: '#1e293b', fontSize: '13px' }}
                 >
-                  <FaCalendarCheck size={14} /> My Attendance
+                  <FaCalendarCheck size={14} /> Mark Attendance
                 </button>
                 <button
                   onClick={() => { setProfileOpen(false); navigate('/settings'); }}
                   className="btn btn-link text-decoration-none w-100 text-start d-flex align-items-center gap-2 px-3 py-2"
-                  style={{ color: '#1e293b', fontSize: '14px' }}
+                  style={{ color: '#1e293b', fontSize: '13px' }}
                 >
                   <FaCog size={14} /> Settings
                 </button>
@@ -256,7 +288,7 @@ const Header = () => {
                 <button
                   onClick={handleLogout}
                   className="btn btn-link text-decoration-none w-100 text-start d-flex align-items-center gap-2 px-3 py-2 text-danger"
-                  style={{ fontSize: '14px' }}
+                  style={{ fontSize: '13px' }}
                 >
                   <FaSignOutAlt size={14} /> Logout
                 </button>
@@ -279,14 +311,14 @@ const Header = () => {
             style={{ maxWidth: '440px', width: '90%' }}
           >
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="mb-0">About BuildTrack Pro</h5>
+              <h5 className="mb-0">AbOUT SUNGRID ENERGY</h5>
               <button className="btn btn-sm btn-link text-muted p-0" onClick={() => setAboutOpen(false)}>
                 <FaTimes />
               </button>
             </div>
             <p style={{ fontSize: '14px', color: '#475569' }}>
-              🏗️ <strong>BuildTrack Pro</strong> is a CRM built for construction businesses to manage
-              leads, track project stages, log client remarks, and stay on top of follow-ups — all in one place.
+             <strong>SUNGRID ENERGY</strong> is a CRM built for construction businesses to manage
+              leads, track project stages, log leadremarks, and stay on top of follow-ups — all in one place.
             </p>
             <div style={{ fontSize: '13px', color: '#64748b' }}>
               <div className="d-flex justify-content-between py-1 border-bottom">
@@ -294,10 +326,10 @@ const Header = () => {
               </div>
               <div className="d-flex justify-content-between py-1 border-bottom">
                 <span>Support</span>
-                <a href="mailto:support@buildtrackpro.com" className="text-decoration-none">support@buildtrackpro.com</a>
+                <a href="Info@techbuzzsolution.com" className="text-decoration-none">Info@techbuzzsolution.com</a>
               </div>
               <div className="d-flex justify-content-between py-1">
-                <span>© {new Date().getFullYear()}</span><span>BuildTrack Pro. All rights reserved.</span>
+                <span>© {new Date().getFullYear()}</span><span>SUNGRID ENERGY. All rights reserved.</span>
               </div>
             </div>
           </div>

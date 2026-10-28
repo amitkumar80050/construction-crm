@@ -21,13 +21,13 @@ const stageService = {
     return await api.delete(`/stages/${id}`);
   },
 
-  updateClientStage: async (clientId, stagePayload) => {
+  updateLeadstage: async (LeadId, stagePayload) => {
     const body = typeof stagePayload === 'string' ? { stageId: stagePayload } : stagePayload;
-    return await api.put(`/stages/client/${clientId}`, body);
+    return await api.put(`/stages/Lead/${LeadId}`, body);
   },
 
-  getClientStageHistory: async (clientId) => {
-    return await api.get(`/stages/history/${clientId}`);
+  getLeadstageHistory: async (LeadId) => {
+    return await api.get(`/stages/history/${LeadId}`);
   },
 };
 

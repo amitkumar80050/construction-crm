@@ -19,8 +19,14 @@ const PORT = process.env.PORT || 5000;
 // Connect to MongoDB only if MONGO_URI is defined
 if (process.env.MONGO_URI) {
   mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
+    .then(async () => {
       console.log('✅ MongoDB connected successfully');
+      try {
+        const { bootstrapDefaultUsers } = require('./utils/bootstrapUsers');
+        await bootstrapDefaultUsers();
+      } catch (bootErr) {
+        console.warn('Bootstrap warning:', bootErr.message);
+      }
       startServer();
     })
     .catch((err) => {
@@ -36,7 +42,7 @@ if (process.env.MONGO_URI) {
 
 // Replace app.listen(PORT, ...) with:
 const httpServer = http.createServer(app);
-const io = new Server(httpServer, { cors: { origin: process.env.CLIENT_URL || 'http://localhost:3000' } });
+const io = new Server(httpServer, { cors: { origin: process.env.Lead_URL || 'http://localhost:3000' } });
 initSocket(io);
 
 function startServer() {

@@ -1,5 +1,6 @@
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const User = require('../models/User');
+const Team = require('../models/Team');
 const SiteVisit = require('../models/SiteVisit');
 const Attendance = require('../models/Attendance');
 const Remark = require('../models/Remark');
@@ -34,19 +35,67 @@ const getDashboard = async (req, res) => {
       ? { user: { $ne: req.user.id } }
       : { user: { $in: ids.filter((id) => String(id) !== String(req.user.id)) } };
     const visitScope = req.user.role === 'admin' ? {} : { assignedTo: { $in: ids } };
-    const [totalLeads, stages, callsDone, plannedVisits, doneVisits, missedVisits, pendingAttendance, team, unassignedLeads, teamLeads] = await Promise.all([
-      Client.countDocuments(leadQuery),
-      Client.aggregate([{ $match: leadQuery }, { $group: { _id: '$pipelineStage', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
+    const teamsQuery = req.user.role === 'admin'
+      ? { status: 'ACTIVE' }
+      : { _id: { $in: req.user.teamIds || [] } };
+
+    const [totalLeads, stages, callsDone, plannedVisits, doneVisits, missedVisits, pendingAttendance, team, unassignedLeads, regularLeads, allTeams, scheduledVisits, readyVisitLeads] = await Promise.all([
+      Lead.countDocuments(leadQuery),
+      Lead.aggregate([{ $match: leadQuery }, { $group: { _id: '$pipelineStage', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
       Remark.countDocuments({ ...(req.user.role === 'admin' ? {} : { user: { $in: ids } }), type: 'call' }),
       SiteVisit.countDocuments({ ...visitScope, status: { $in: ['PLANNED', 'SCHEDULED'] } }),
       SiteVisit.countDocuments({ ...visitScope, status: { $in: ['DONE', 'COMPLETED'] } }),
       SiteVisit.countDocuments({ ...visitScope, status: { $in: ['MISSED', 'NOT_DONE'] } }),
       Attendance.countDocuments({ ...attendanceQuery, status: 'PENDING' }),
-      User.find(teamUserQuery(req)).select('name email role teamIds').sort({ name: 1 }),
-      Client.find({ ...(req.user.role === 'admin' ? {} : { team: { $in: req.user.teamIds || [] } }), pipelineStage: 'NEW', $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }] }).select('name company email phone pipelineStage').sort({ createdAt: -1 }).limit(100),
-      Client.find(leadQuery).select('name company pipelineStage').sort({ createdAt: -1 }).limit(100),
+      User.find(teamUserQuery(req))
+        .populate('teamIds', 'name code department')
+        .select('name email role teamIds phone department')
+        .sort({ name: 1 }),
+      Lead.find({ ...(req.user.role === 'admin' ? {} : { team: { $in: req.user.teamIds || [] } }), pipelineStage: 'NEW', $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }] })
+        .populate('team', 'name code')
+        .select('name company email phone pipelineStage team')
+        .sort({ createdAt: -1 })
+        .limit(100),
+      Lead.find(leadQuery)
+        .populate('team', 'name code')
+        .populate('assignedTo', 'name email role')
+        .select('name company email phone pipelineStage assignedTo team createdAt')
+        .sort({ createdAt: -1 })
+        .limit(200),
+      Team.find(teamsQuery).select('name code department').sort({ name: 1 }),
+      SiteVisit.find(visitScope)
+        .populate('lead', 'name company phone pipelineStage')
+        .populate('assignedTo', 'name email role')
+        .sort({ scheduledAt: -1 })
+        .limit(100),
+      Lead.find({ ...leadQuery, pipelineStage: 'SITE_VISIT_PLANNED' })
+        .populate('team', 'name code')
+        .populate('assignedTo', 'name email role')
+        .select('name company email phone pipelineStage assignedTo team createdAt'),
     ]);
-    res.json({ success: true, data: { totalLeads, stages, callsDone, siteVisits: { planned: plannedVisits, done: doneVisits, missed: missedVisits }, pendingAttendance, team, unassignedLeads, teamLeads } });
+
+    // Combine ready visit leads at top without duplicates
+    const readyIds = new Set(readyVisitLeads.map((l) => String(l._id)));
+    const combinedLeads = [
+      ...readyVisitLeads,
+      ...regularLeads.filter((l) => !readyIds.has(String(l._id))),
+    ];
+
+    res.json({
+      success: true,
+      data: {
+        totalLeads,
+        stages,
+        callsDone,
+        siteVisits: { planned: plannedVisits, done: doneVisits, missed: missedVisits },
+        pendingAttendance,
+        team,
+        unassignedLeads,
+        teamLeads: combinedLeads,
+        scheduledVisits: scheduledVisits || [],
+        teams: allTeams || [],
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message || 'Unable to load manager dashboard' });
   }
@@ -62,7 +111,7 @@ const distribute = async (req, res) => {
     const query = selectedLeadIds.length
       ? { ...teamScope, _id: { $in: selectedLeadIds }, pipelineStage: 'NEW', $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }] }
       : { ...teamScope, $or: [{ assignedTo: null }, { assignedTo: { $exists: false } }], pipelineStage: 'NEW' };
-    const leads = await Client.find(query);
+    const leads = await Lead.find(query);
     if (selectedLeadIds.length && leads.length !== selectedLeadIds.length) {
       return res.status(403).json({ success: false, message: 'Every selected lead must be unassigned and belong to your team.' });
     }
@@ -96,7 +145,7 @@ const distribute = async (req, res) => {
       }
     }
 
-    await logActivity({ req, user: req.user, type: 'update', module: 'client', description: `Assigned ${assignedCount} leads across the team`, metadata: { assignedCount } });
+    await logActivity({ req, user: req.user, type: 'update', module: 'Lead', description: `Assigned ${assignedCount} leads across the team`, metadata: { assignedCount } });
     res.json({ success: true, distributed: assignedCount });
   } catch (error) {
     res.status(error.status || 500).json({ success: false, message: error.message || 'Unable to distribute leads' });
@@ -111,7 +160,7 @@ const assignVisit = async (req, res) => {
     const executive = await ensureTeamUser(req, executiveId);
     if (executive.role !== 'sales executer') return res.status(400).json({ success: false, message: 'Site visits can only be assigned to Sales Executives' });
     const ids = await teamUserIds(req);
-    const lead = await Client.findOne({
+    const lead = await Lead.findOne({
       _id: leadId,
       pipelineStage: 'SITE_VISIT_PLANNED',
       ...(req.user.role === 'admin' ? {} : { assignedTo: { $in: ids } }),
@@ -131,7 +180,7 @@ const assignVisit = async (req, res) => {
     if (validationError) return res.status(400).json({ success: false, message: validationError });
     const visit = await SiteVisit.create({ lead: leadId, assignedTo: executiveId, scheduledAt, address: address.trim(), priority, notes: notes.trim(), createdBy: req.user.id });
     await sendSiteVisitAssignmentEmail(executive, visit);
-    await logActivity({ req, user: req.user, type: 'create', module: 'site_visit', description: `Assigned site visit for ${lead.name} to ${executive.name}`, targetId: visit._id, targetType: 'SiteVisit', client: lead._id, metadata: { assignedTo: executive._id, scheduledAt: visit.scheduledAt } });
+    await logActivity({ req, user: req.user, type: 'create', module: 'site_visit', description: `Assigned site visit for ${lead.name} to ${executive.name}`, targetId: visit._id, targetType: 'SiteVisit', Lead: lead._id, metadata: { assignedTo: executive._id, scheduledAt: visit.scheduledAt } });
     res.status(201).json({ success: true, data: await visit.populate('assignedTo', 'name email') });
   } catch (error) {
     res.status(error.status || 500).json({ success: false, message: error.message || 'Unable to assign site visit' });

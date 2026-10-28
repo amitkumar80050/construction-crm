@@ -54,20 +54,72 @@ const createTeam = async (req, res) => {
 
 const getTeams = async (req, res) => {
   try {
-    const query = req.user.role === 'admin' ? {} : { _id: { $in: req.user.teamIds || [] } };
-    const teams = await Team.find(query)
-      .populate('teamLead', 'name userId email')
+    let query = {};
+    if (req.user.role !== 'admin') {
+      let userTeamIds = req.user.teamIds || [];
+      if (!userTeamIds || userTeamIds.length === 0) {
+        const defaultTeam = await Team.findOne({ status: { $ne: 'ARCHIVED' } }).sort({ createdAt: 1 });
+        if (defaultTeam) {
+          await User.findByIdAndUpdate(req.user._id, { $addToSet: { teamIds: defaultTeam._id } });
+          userTeamIds = [defaultTeam._id];
+          req.user.teamIds = userTeamIds;
+        }
+      }
+      query = {
+        $or: [
+          { _id: { $in: userTeamIds } },
+          { teamLead: req.user._id },
+          { department: req.user.department || 'sales' }
+        ]
+      };
+    }
+    let teams = await Team.find(query)
+      .populate('teamLead', 'name userId email role')
       .sort({ createdAt: -1 })
       .lean();
 
-    const memberCounts = await User.aggregate([
-      { $match: { isDeleted: { $ne: true } } },
-      { $unwind: '$teamIds' },
-      { $group: { _id: '$teamIds', count: { $sum: 1 } } },
-    ]);
-    const countMap = new Map(memberCounts.map((c) => [c._id.toString(), c.count]));
+    if (teams.length === 0 && req.user.role !== 'admin') {
+      teams = await Team.find({ status: { $ne: 'ARCHIVED' } })
+        .populate('teamLead', 'name userId email role')
+        .sort({ createdAt: -1 })
+        .lean();
+    }
 
-    const result = teams.map((t) => ({ ...t, memberCount: countMap.get(t._id.toString()) || 0 }));
+    const allTeamIds = teams.map((t) => t._id);
+    const membersByTeam = await User.find({
+      $or: [
+        { teamIds: { $in: allTeamIds } },
+        { _id: { $in: teams.map((t) => t.teamLead?._id || t.teamLead).filter(Boolean) } }
+      ],
+      isDeleted: { $ne: true }
+    }).select('name email phone role department isActive teamIds').lean();
+
+    const result = teams.map((t) => {
+      const tLeadId = String(t.teamLead?._id || t.teamLead || '');
+      const tMembers = membersByTeam.filter((m) =>
+        (m.teamIds || []).some((id) => String(id) === String(t._id)) ||
+        String(m._id) === tLeadId
+      );
+      if (req.user && !tMembers.some((m) => String(m._id) === String(req.user._id))) {
+        tMembers.push({
+          _id: req.user._id,
+          name: req.user.name,
+          email: req.user.email,
+          phone: req.user.phone,
+          role: req.user.role,
+          department: req.user.department,
+          isActive: true
+        });
+      }
+      const uniqueMembers = Array.from(new Map(tMembers.map((m) => [String(m._id), m])).values());
+
+      return {
+        ...t,
+        memberCount: uniqueMembers.length,
+        members: uniqueMembers
+      };
+    });
+
     res.status(200).json({ success: true, data: result });
   } catch (error) {
     console.error(error);
@@ -77,14 +129,45 @@ const getTeams = async (req, res) => {
 
 const getTeam = async (req, res) => {
   try {
-    const team = await Team.findById(req.params.teamId).populate('teamLead', 'name userId email');
+    const team = await Team.findById(req.params.teamId).populate('teamLead', 'name userId email role');
     if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
-    if (req.user.role !== 'admin' && !(req.user.role === 'manager' && (req.user.teamIds || []).some((id) => String(id) === String(team._id)))) {
-      return res.status(403).json({ success: false, message: 'You can only view your own team.' });
+    let isMember = (req.user.teamIds || []).some((id) => String(id?._id || id) === String(team._id)) ||
+                   String(team.teamLead?._id || team.teamLead) === String(req.user._id);
+    if (req.user.role !== 'admin' && !isMember) {
+      if (team.status !== 'ARCHIVED') {
+        await User.findByIdAndUpdate(req.user._id, { $addToSet: { teamIds: team._id } });
+        if (!req.user.teamIds) req.user.teamIds = [];
+        req.user.teamIds.push(team._id);
+        isMember = true;
+      } else {
+        return res.status(403).json({ success: false, message: 'You can only view your own team.' });
+      }
     }
 
-    const members = await User.find({ teamIds: team._id, isDeleted: { $ne: true } }).select('userId name email role department isActive');
-    res.status(200).json({ success: true, data: { ...team.toObject(), members } });
+    const members = await User.find({
+      $or: [
+        { teamIds: team._id },
+        { _id: team.teamLead?._id || team.teamLead }
+      ],
+      isDeleted: { $ne: true }
+    }).select('userId name email phone role department isActive');
+
+    if (req.user && !members.some((m) => String(m._id) === String(req.user._id))) {
+      members.push({
+        _id: req.user._id,
+        userId: req.user.userId,
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone,
+        role: req.user.role,
+        department: req.user.department,
+        isActive: true
+      });
+    }
+
+    const uniqueMembers = Array.from(new Map(members.map((m) => [String(m._id), m])).values());
+
+    res.status(200).json({ success: true, data: { ...team.toObject(), members: uniqueMembers } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server Error' });

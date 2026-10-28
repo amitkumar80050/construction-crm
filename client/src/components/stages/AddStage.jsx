@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { FaArrowRight, FaTimes, FaCalendarAlt, FaStickyNote } from 'react-icons/fa';
 import stageService from '../../services/stageService';
 
-const AddStage = ({ clientId, currentStageId, onMoved, onCancel }) => {
+const AddStage = ({ LeadId, currentStageId, onMoved, onCancel }) => {
   const [stages, setStages] = useState([]);
   const [selectedStage, setSelectedStage] = useState('');
   const [notes, setNotes] = useState('');
@@ -47,19 +47,19 @@ const AddStage = ({ clientId, currentStageId, onMoved, onCancel }) => {
 
     setSubmitting(true);
     try {
-      const res = await stageService.updateClientStage(clientId, {
+      const res = await stageService.updateLeadstage(LeadId, {
         stageId: selectedStage,
         notes: notes.trim(),
         followUpDate: followUpDate || undefined,
       });
-      const updatedClient = res.data?.data || res.data;
+      const updatedlead = res.data?.data || res.data;
 
       toast.success(`Lead moved to ${selectedStageObj?.name || 'new stage'}!`);
       setSelectedStage('');
       setNotes('');
       setFollowUpDate('');
 
-      if (onMoved) onMoved(updatedClient);
+      if (onMoved) onMoved(updatedLead);
     } catch (error) {
       const msg = error.response?.data?.message || 'Failed to update stage';
       toast.error(msg);
@@ -128,7 +128,7 @@ const AddStage = ({ clientId, currentStageId, onMoved, onCancel }) => {
         </label>
         <textarea
           rows="2"
-          placeholder="e.g. Spoke with client, requested quote, agreed to meet next week..."
+          placeholder="e.g. Spoke with Lead, requested quote, agreed to meet next week..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           required={isFollowUpOrInterested}

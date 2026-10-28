@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FaBell, FaCalendar } from 'react-icons/fa';
 import reminderService from '../../services/reminderService';
 import ReminderHistory from './ReminderHistory';
@@ -12,14 +12,20 @@ const getPriorityColor = (priority) => {
   }
 };
 
-const UpcomingReminder = ({ clientId, clientName }) => {
+const UpcomingReminder = ({ LeadId, leadId, LeadName, leadName }) => {
+  const actualLeadId = LeadId || leadId;
+  const actualLeadName = LeadName || leadName;
   const [upcoming, setUpcoming] = useState(null);
   const [loading, setLoading] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const fetchUpcoming = async () => {
+  const fetchUpcoming = useCallback(async () => {
+    if (!actualLeadId) {
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await reminderService.getRemindersByClient(clientId);
+      const res = await reminderService.getRemindersByLead(actualLeadId);
       const list = res.data?.data || [];
       // Show the soonest pending/overdue reminder first, else the latest overall
       const pending = list
@@ -31,31 +37,11 @@ const UpcomingReminder = ({ clientId, clientName }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [actualLeadId]);
 
-useEffect(() => {
-  if (!clientId) return;
-
-  let mounted = true;
-
-  const load = async () => {
-    try {
-      const res = await reminderService.getRemindersByClient(clientId);
-      const list = res.data?.data || [];
-      const pending = list
-        .filter(r => r.status !== 'completed')
-        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-      if (mounted) setUpcoming(pending[0] || list[0] || null);
-    } catch (error) {
-      if (mounted) setUpcoming(null);
-    } finally {
-      if (mounted) setLoading(false);
-    }
-  };
-
-  load();
-  return () => { mounted = false; };
-}, [clientId]);
+  useEffect(() => {
+    fetchUpcoming();
+  }, [fetchUpcoming]);
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -116,8 +102,8 @@ useEffect(() => {
       </div>
 
       <ReminderHistory
-        clientId={clientId}
-        clientName={clientName}
+        LeadId={actualLeadId}
+        LeadName={actualLeadName}
         isOpen={historyOpen}
         onClose={handleClose}
         onReminderChanged={handleChanged}

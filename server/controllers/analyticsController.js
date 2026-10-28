@@ -1,4 +1,4 @@
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const Remark = require('../models/Remark');
 const Stage = require('../models/Stage');
 const User = require('../models/User');
@@ -9,15 +9,15 @@ const Reminder = require('../models/Reminder');
 // @access  Private
 const getDashboardAnalytics = async (req, res) => {
   try {
-    // Get client statistics
-    const totalClients = await Client.countDocuments();
-    const leads = await Client.countDocuments({ status: 'lead' });
-    const active = await Client.countDocuments({ status: 'active' });
-    const closed = await Client.countDocuments({ status: 'closed' });
-    const lost = await Client.countDocuments({ status: 'lost' });
+    // Get leadstatistics
+    const totalLeads = await Lead.countDocuments();
+    const leads = await Lead.countDocuments({ status: 'lead' });
+    const active = await Lead.countDocuments({ status: 'active' });
+    const closed = await Lead.countDocuments({ status: 'closed' });
+    const lost = await Lead.countDocuments({ status: 'lost' });
 
     // Get stage distribution
-    const stageDistribution = await Client.aggregate([
+    const stageDistribution = await Lead.aggregate([
       { $group: { _id: '$currentStage', count: { $sum: 1 } } },
       { $lookup: { from: 'stages', localField: '_id', foreignField: '_id', as: 'stage' } },
       { $unwind: { path: '$stage', preserveNullAndEmptyArrays: true } },
@@ -27,7 +27,7 @@ const getDashboardAnalytics = async (req, res) => {
     // Get recent activity
     const recentRemarks = await Remark.find()
       .populate('user', 'name')
-      .populate('client', 'name')
+      .populate('Lead', 'name')
       .sort({ createdAt: -1 })
       .limit(10);
 
@@ -37,7 +37,7 @@ const getDashboardAnalytics = async (req, res) => {
       status: 'pending',
       dueDate: { $gte: new Date() },
     })
-      .populate('client', 'name')
+      .populate('Lead', 'name')
       .sort({ dueDate: 1 })
       .limit(5);
 
@@ -45,8 +45,8 @@ const getDashboardAnalytics = async (req, res) => {
     const totalUsers = await User.countDocuments();
     const activeUsers = await User.countDocuments({ isActive: true });
 
-    // Get monthly new clients
-    const monthlyNewClients = await Client.aggregate([
+    // Get monthly new Leads
+    const monthlyNewLeads = await Lead.aggregate([
       {
         $match: {
           createdAt: {
@@ -69,13 +69,13 @@ const getDashboardAnalytics = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        clientStats: {
-          total: totalClients,
+        Leadstats: {
+          total: totalLeads,
           leads,
           active,
           closed,
           lost,
-          conversionRate: totalClients > 0 ? ((closed / totalClients) * 100).toFixed(2) : 0,
+          conversionRate: totalLeads > 0 ? ((closed / totalLeads) * 100).toFixed(2) : 0,
         },
         stageDistribution,
         recentActivity: recentRemarks,
@@ -84,7 +84,7 @@ const getDashboardAnalytics = async (req, res) => {
           total: totalUsers,
           active: activeUsers,
         },
-        monthlyNewClients,
+        monthlyNewLeads,
       },
     });
   } catch (error) {
@@ -98,15 +98,36 @@ const getDashboardAnalytics = async (req, res) => {
 
 // @desc    Get user performance analytics
 // @route   GET /api/analytics/performance
-// @access  Private/Admin
+// @access  Private
 const getUserPerformance = async (req, res) => {
   try {
-    const users = await User.find({ isActive: true }).select('name email role');
+    let userFilter = { isActive: true, isDeleted: { $ne: true } };
+
+    if (req.user.role === 'admin') {
+      // Admin sees all active users
+    } else if (req.user.role === 'manager') {
+      // Manager sees members of their team(s) plus themselves
+      const managerTeamIds = req.user.teamIds || [];
+      const teamUsers = await User.find({
+        $or: [
+          { teamIds: { $in: managerTeamIds } },
+          { _id: req.user._id }
+        ],
+        isActive: true,
+        isDeleted: { $ne: true },
+      }).select('_id');
+      userFilter._id = { $in: teamUsers.map((u) => u._id) };
+    } else {
+      // Telecaller / sales executer sees their own performance
+      userFilter._id = req.user._id;
+    }
+
+    const users = await User.find(userFilter).select('name email role');
 
     const performanceData = await Promise.all(
       users.map(async (user) => {
-        const clientsAssigned = await Client.countDocuments({ assignedTo: user._id });
-        const leadsConverted = await Client.countDocuments({
+        const LeadsAssigned = await Lead.countDocuments({ assignedTo: user._id });
+        const leadsConverted = await Lead.countDocuments({
           assignedTo: user._id,
           status: 'closed',
         });
@@ -121,9 +142,9 @@ const getUserPerformance = async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
-          clientsAssigned,
+          LeadsAssigned,
           leadsConverted,
-          conversionRate: clientsAssigned > 0 ? ((leadsConverted / clientsAssigned) * 100).toFixed(2) : 0,
+          conversionRate: LeadsAssigned > 0 ? ((leadsConverted / LeadsAssigned) * 100).toFixed(2) : 0,
           remarks,
           completedReminders,
         };

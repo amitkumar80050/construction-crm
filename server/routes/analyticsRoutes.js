@@ -8,7 +8,7 @@ const {
 } = require('../controllers/analyticsController');
 
 router.get('/dashboard', protect, getDashboardAnalytics);
-router.get('/performance', protect, admin, getUserPerformance);
+router.get('/performance', protect, getUserPerformance);
 router.get('/reminders', protect, getReminderAnalytics);
 
 module.exports = router;

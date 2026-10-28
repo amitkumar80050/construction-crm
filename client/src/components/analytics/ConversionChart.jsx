@@ -11,7 +11,7 @@ const ConversionChart = () => {
     const load = async () => {
       try {
         const res = await analyticsService.getDashboardAnalytics();
-        setStats(res.data?.data?.clientStats || null);
+        setStats(res.data?.data?.Leadstats || null);
       } catch (error) {
         toast.error('Failed to load conversion data');
       } finally {

@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const {
   getReminders,
+  getRemindersByLead,
   getReminder,
   createReminder,
   updateReminder,
@@ -13,6 +14,9 @@ const {
 router.route('/')
   .get(protect, getReminders)
   .post(protect, createReminder);
+
+router.get('/Lead/:LeadId', protect, getRemindersByLead);
+router.get('/lead/:leadId', protect, getRemindersByLead);
 
 router.put('/:id/complete', protect, completeReminder);
 

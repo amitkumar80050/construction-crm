@@ -1,5 +1,6 @@
-// client/src/pages/ImportLeads.jsx
+// Lead/src/pages/ImportLeads.jsx
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { FaArrowLeft, FaFileExcel } from 'react-icons/fa';
 import FileUploadZone from '../components/import/FileUploadZone';
 import ColumnMapper from '../components/import/ColumnMapper';
@@ -7,6 +8,7 @@ import ImportPreviewTable from '../components/import/ImportPreviewTable';
 import ImportSummary from '../components/import/ImportSummary';
 import importService from '../services/importService';
 import teamService from '../services/teamService';
+import { buildAutoMapping } from '../components/clients/QuickLeadUpload';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-toastify';
 
@@ -32,6 +34,7 @@ const initialUploadState = {
 
 const ImportLeads = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [step, setStep] = useState(STEPS.UPLOAD);
   const [uploading, setUploading] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -53,6 +56,35 @@ const ImportLeads = () => {
       setTeamId((current) => current || list[0]?._id || '');
     }).catch(() => toast.error('Unable to load teams for lead import'));
   }, [user?.role]);
+
+  useEffect(() => {
+    const preloaded = location.state?.preloaded;
+    if (preloaded && preloaded.tempFilePath) {
+      importService.getCrmFields().then((fieldsResponse) => {
+        const crmFields = fieldsResponse.data?.data || [];
+        setUploadState({
+          tempFilePath: preloaded.tempFilePath,
+          fileType: preloaded.fileType,
+          fileName: preloaded.fileName,
+          detectedColumns: preloaded.detectedColumns || [],
+          crmFields,
+          sheetNames: preloaded.sheetNames || [],
+          activeSheet: preloaded.activeSheet || null,
+        });
+
+        const autoMapping = buildAutoMapping(preloaded.detectedColumns || []);
+        setMapping(autoMapping);
+
+        if (preloaded.fileType === 'excel' && preloaded.sheetNames && preloaded.sheetNames.length > 1) {
+          setStep(STEPS.SELECT_SHEET);
+        } else {
+          setStep(STEPS.MAP);
+        }
+      }).catch(() => {
+        // proceed normally
+      });
+    }
+  }, [location.state]);
 
   const resetAll = () => {
     setStep(STEPS.UPLOAD);
@@ -82,20 +114,14 @@ const ImportLeads = () => {
         tempFilePath: data.tempFilePath,
         fileType: data.fileType,
         fileName: data.fileName,
-        detectedColumns: data.detectedColumns,
+        detectedColumns: data.detectedColumns || [],
         crmFields,
         sheetNames: data.sheetNames || [],
         activeSheet: data.activeSheet || null,
       });
 
-      // Auto-map columns whose name matches a CRM field label/key
-      const autoMapping = {};
-      data.detectedColumns.forEach((col) => {
-        const match = data.crmFields.find(
-          (f) => f.label.toLowerCase() === col.toLowerCase() || f.key.toLowerCase() === col.toLowerCase()
-        );
-        if (match) autoMapping[col] = match.key;
-      });
+      // Auto-map columns using smart alias matching
+      const autoMapping = buildAutoMapping(data.detectedColumns || []);
       setMapping(autoMapping);
 
       // If it's an Excel file with more than one sheet, let the user pick
@@ -124,16 +150,10 @@ const ImportLeads = () => {
       setUploadState((prev) => ({
         ...prev,
         activeSheet: data.activeSheet,
-        detectedColumns: data.detectedColumns,
+        detectedColumns: data.detectedColumns || [],
       }));
 
-      const autoMapping = {};
-      data.detectedColumns.forEach((col) => {
-        const match = uploadState.crmFields.find(
-          (f) => f.label.toLowerCase() === col.toLowerCase() || f.key.toLowerCase() === col.toLowerCase()
-        );
-        if (match) autoMapping[col] = match.key;
-      });
+      const autoMapping = buildAutoMapping(data.detectedColumns || []);
       setMapping(autoMapping);
 
       setStep(STEPS.MAP);
@@ -146,15 +166,15 @@ const ImportLeads = () => {
 
   // --- Step 3: Column mapping ---
   const requiredFieldsMapped = () => {
-    const requiredKeys = uploadState.crmFields.filter((f) => f.required).map((f) => f.key);
-    const mappedKeys = new Set(Object.values(mapping).filter(Boolean));
-    return requiredKeys.every((key) => mappedKeys.has(key))
-      && ['Contact', 'Phone', 'Email'].some((key) => mappedKeys.has(key));
+    const mappedValues = Object.values(mapping).filter(Boolean);
+    const hasName = mappedValues.includes('Name');
+    const hasContact = ['Contact', 'Phone', 'Email'].some((key) => mappedValues.includes(key));
+    return hasName && hasContact;
   };
 
   const handleContinueToPreview = async () => {
     if (!requiredFieldsMapped()) {
-      toast.error('Map Name, Source, and at least one Contact, Phone, or Email column before continuing.');
+      toast.error('Map Lead Name and at least one Contact (phone or email) column before continuing.');
       return;
     }
 
@@ -194,7 +214,7 @@ const ImportLeads = () => {
 
   // --- Step 4: Preview -> Process import ---
   const handleImport = async () => {
-    if (['admin', 'manager'].includes(user?.role) && !teamId) {
+    if (user?.role === 'manager' && !teamId) {
       toast.error('Select a team before importing leads.');
       return;
     }

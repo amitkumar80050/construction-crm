@@ -1,20 +1,77 @@
 const SiteVisit = require('../models/SiteVisit');
 const User = require('../models/User');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const LeadStageHistory = require('../models/LeadStageHistory');
 const { sendSiteVisitStatusEmail } = require('../services/notificationService');
 const { logActivity } = require('../services/activityLogService');
 
+const SiteVisitMedia = require('../models/SiteVisitMedia');
+
+const getAllVisits = async (req, res) => {
+  try {
+    let filter = {};
+    if (req.user.role === 'sales executer') {
+      filter.assignedTo = req.user.id;
+    } else if (req.user.role === 'manager') {
+      const teamUserIds = await User.find({
+        teamIds: { $in: req.user.teamIds || [] },
+        isActive: true,
+      }).distinct('_id');
+      filter.$or = [
+        { assignedTo: { $in: teamUserIds } },
+        { createdBy: req.user.id },
+      ];
+    }
+    // Admin gets all visits across all teams
+
+    if (req.query.status && req.query.status !== 'ALL') {
+      if (req.query.status === 'PLANNED' || req.query.status === 'SCHEDULED') {
+        filter.status = { $in: ['PLANNED', 'SCHEDULED'] };
+      } else if (req.query.status === 'DONE' || req.query.status === 'COMPLETED') {
+        filter.status = { $in: ['DONE', 'COMPLETED'] };
+      } else if (req.query.status === 'MISSED' || req.query.status === 'NOT_DONE') {
+        filter.status = { $in: ['MISSED', 'NOT_DONE'] };
+      } else {
+        filter.status = req.query.status;
+      }
+    }
+
+    if (req.query.executiveId) {
+      filter.assignedTo = req.query.executiveId;
+    }
+
+    const visits = await SiteVisit.find(filter)
+      .populate('lead', 'name phone address company pipelineStage email')
+      .populate('Lead', 'name phone address company pipelineStage email')
+      .populate('assignedTo', 'name email userId phone role')
+      .populate('media')
+      .populate('assignedTo', 'name email userId phone role')
+      .populate('createdBy', 'name email')
+      .populate('media')
+      .sort({ scheduledAt: -1 });
+
+    res.status(200).json({ success: true, count: visits.length, data: visits });
+  } catch (error) {
+    console.error('getAllVisits error:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 const getMyVisits = async (req, res) => {
   try {
     const filter = { assignedTo: req.user.id };
-    if (req.query.status === 'PLANNED' || req.query.status === 'SCHEDULED') filter.status = { $in: ['PLANNED', 'SCHEDULED'] };
-    else if (req.query.status === 'DONE' || req.query.status === 'COMPLETED') filter.status = { $in: ['DONE', 'COMPLETED'] };
-    else if (req.query.status === 'MISSED' || req.query.status === 'NOT_DONE') filter.status = { $in: ['MISSED', 'NOT_DONE'] };
-    else filter.status = { $in: ['PLANNED', 'SCHEDULED'] };
+    if (req.query.status && req.query.status !== 'ALL') {
+      if (req.query.status === 'PLANNED' || req.query.status === 'SCHEDULED') filter.status = { $in: ['PLANNED', 'SCHEDULED'] };
+      else if (req.query.status === 'DONE' || req.query.status === 'COMPLETED') filter.status = { $in: ['DONE', 'COMPLETED'] };
+      else if (req.query.status === 'MISSED' || req.query.status === 'NOT_DONE') filter.status = { $in: ['MISSED', 'NOT_DONE'] };
+      else filter.status = req.query.status;
+    }
 
     const visits = await SiteVisit.find(filter)
-      .populate('lead', 'name phone address company')
+      .populate('lead', 'name phone address company pipelineStage email')
+      .populate('Lead', 'name phone address company pipelineStage email')
+      .populate('assignedTo', 'name email userId phone role')
+      .populate('media')
       .sort({ scheduledAt: 1 });
 
     res.status(200).json({ success: true, data: visits });
@@ -56,19 +113,38 @@ const completeVisit = async (req, res) => {
 
     const updatedVisit = await SiteVisit.findOneAndUpdate(
       { _id: visit._id, assignedTo: req.user.id },
-      { $set: {
-        status: 'DONE',
-        photoUrl: `/uploads/site-visits/${req.file.filename}`,
-        latitude: lat,
-        longitude: lng,
-        notes: notes || '',
-        completedAt: Date.now(),
-      } },
+      {
+        $set: {
+          status: 'DONE',
+          photoUrl: `/uploads/site-visits/${req.file.filename}`,
+          latitude: lat,
+          longitude: lng,
+          notes: notes || '',
+          completedAt: Date.now(),
+        }
+      },
       { new: true, runValidators: true }
     );
     if (!updatedVisit) return res.status(403).json({ success: false, message: 'Not authorized for this visit' });
 
-    const lead = await Client.findById(visit.lead);
+    const photoUrl = `/uploads/site-visits/${req.file.filename}`;
+    try {
+      const media = await SiteVisitMedia.create({
+        siteVisit: updatedVisit._id,
+        type: 'PHOTO',
+        url: photoUrl,
+        latitude: lat,
+        longitude: lng,
+        address: visit.address,
+        uploadedBy: req.user.id,
+      });
+      updatedVisit.media = updatedVisit.media ? [...updatedVisit.media, media._id] : [media._id];
+      await updatedVisit.save();
+    } catch (mediaErr) {
+      console.warn('SiteVisitMedia creation warning:', mediaErr.message);
+    }
+
+    const lead = await Lead.findById(visit.lead);
     if (lead && lead.pipelineStage === 'SITE_VISIT_PLANNED') {
       lead.pipelineStage = 'SITE_VISIT_DONE';
       await lead.save();
@@ -81,7 +157,7 @@ const completeVisit = async (req, res) => {
       });
     }
 
-    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Completed site visit for ${lead?.name || 'lead'}`, targetId: updatedVisit._id, targetType: 'SiteVisit', client: lead?._id, metadata: { status: 'DONE', latitude: lat, longitude: lng } });
+    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Completed site visit for ${lead?.name || 'lead'}`, targetId: updatedVisit._id, targetType: 'SiteVisit', Lead: lead?._id, metadata: { status: 'DONE', latitude: lat, longitude: lng } });
     if (updatedVisit.createdBy) {
       const manager = await User.findById(updatedVisit.createdBy).select('name email');
       if (manager) await sendSiteVisitStatusEmail(manager, updatedVisit, 'DONE');
@@ -114,8 +190,8 @@ const markNotDone = async (req, res) => {
     );
     if (!updatedVisit) return res.status(403).json({ success: false, message: 'Not authorized for this visit' });
 
-    const lead = await Client.findById(updatedVisit.lead).select('name');
-    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Marked site visit for ${lead?.name || 'lead'} as not done: ${notDoneReason}`, targetId: updatedVisit._id, targetType: 'SiteVisit', client: lead?._id, metadata: { status: 'MISSED', nextDate: updatedVisit.nextDate } });
+    const lead = await Lead.findById(updatedVisit.lead).select('name');
+    await logActivity({ req, user: req.user, type: 'update', module: 'site_visit', description: `Marked site visit for ${lead?.name || 'lead'} as not done: ${notDoneReason}`, targetId: updatedVisit._id, targetType: 'SiteVisit', Lead: lead?._id, metadata: { status: 'MISSED', nextDate: updatedVisit.nextDate } });
     if (updatedVisit.createdBy) {
       const manager = await User.findById(updatedVisit.createdBy).select('name email');
       if (manager) await sendSiteVisitStatusEmail(manager, updatedVisit, 'MISSED');
@@ -127,4 +203,48 @@ const markNotDone = async (req, res) => {
   }
 };
 
-module.exports = { getMyVisits, getVisit, completeVisit, markNotDone };
+const reverseGeocode = async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) {
+      return res.status(400).json({ success: false, message: 'Latitude and Longitude are required' });
+    }
+
+    const https = require('https');
+    const options = {
+      hostname: 'nominatim.openstreetmap.org',
+      path: `/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`,
+      headers: { 'User-Agent': 'ConstructionCRM-App/1.0 (construction@crm.local)' },
+    };
+
+    const apiReq = https.get(options, (apiRes) => {
+      let body = '';
+      apiRes.on('data', (d) => body += d);
+      apiRes.on('end', () => {
+        try {
+          const json = JSON.parse(body);
+          return res.status(200).json({
+            success: true,
+            displayName: json.display_name || `${lat}, ${lng}`,
+            address: json.address || {},
+          });
+        } catch (e) {
+          return res.status(200).json({ success: true, displayName: `${lat}, ${lng}` });
+        }
+      });
+    });
+
+    apiReq.on('error', () => {
+      return res.status(200).json({ success: true, displayName: `${lat}, ${lng}` });
+    });
+
+    apiReq.setTimeout(4000, () => {
+      apiReq.destroy();
+      return res.status(200).json({ success: true, displayName: `${lat}, ${lng}` });
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Geocoding service unavailable' });
+  }
+};
+
+module.exports = { getAllVisits, getMyVisits, getVisit, completeVisit, markNotDone, reverseGeocode };

@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Team = require('../models/Team');
-const Client = require('../models/Client');
+const Lead = require('../models/Lead');
 const Stage = require('../models/Stage');
 const Remark = require('../models/Remark');
 const SiteVisit = require('../models/SiteVisit');
@@ -31,7 +31,7 @@ const getManagerDashboard = async (req, res) => {
     const today = getTodayDateString();
 
     // 1. Total Leads assigned to team
-    const totalLeads = await Client.countDocuments({
+    const totalLeads = await Lead.countDocuments({
       $or: [{ assignedTo: { $in: teamMemberIds } }, { team: { $in: managedTeams.map((t) => t._id) } }],
     });
 
@@ -39,7 +39,7 @@ const getManagerDashboard = async (req, res) => {
     const stages = await Stage.find({ isActive: true }).sort({ order: 1 });
     const stageFunnel = await Promise.all(
       stages.map(async (stage) => {
-        const count = await Client.countDocuments({
+        const count = await Lead.countDocuments({
           currentStage: stage._id,
           $or: [{ assignedTo: { $in: teamMemberIds } }, { team: { $in: managedTeams.map((t) => t._id) } }],
         });

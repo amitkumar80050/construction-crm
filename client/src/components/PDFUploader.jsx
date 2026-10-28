@@ -61,7 +61,8 @@ const PDFUploader = ({ onDataExtracted, onError }) => {
     accept: {
       'application/pdf': ['.pdf']
     },
-    maxFiles: 1
+    maxFiles: 1,
+    preventDropOnDocument: false
   });
 
   return (

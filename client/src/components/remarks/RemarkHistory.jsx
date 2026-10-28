@@ -21,23 +21,25 @@ const getVisibilityStyle = (visibility) => {
   return { background: `${c}20`, color: c };
 };
 
-const RemarkHistory = ({ clientId, clientName, isOpen, onClose, onRemarkAdded }) => {
+const RemarkHistory = ({ LeadId, leadId, LeadName, leadName, isOpen, onClose, onRemarkAdded }) => {
+  const actualLeadId = LeadId || leadId;
+  const actualLeadName = LeadName || leadName;
   const [remarks, setRemarks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
 
   const fetchRemarks = useCallback(async () => {
-    if (!clientId) return;
+    if (!actualLeadId) return;
     setLoading(true);
     try {
-      const res = await remarkService.getRemarksByClient(clientId);
+      const res = await remarkService.getRemarksByLead(actualLeadId);
       setRemarks(res.data?.data || []);
     } catch (error) {
       toast.error('Failed to load remarks');
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [actualLeadId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -88,7 +90,7 @@ const RemarkHistory = ({ clientId, clientName, isOpen, onClose, onRemarkAdded })
         }}>
           <div>
             <h2 style={{ fontSize: '18px', color: '#1e293b', margin: 0 }}>Remark History</h2>
-            {clientName && <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0' }}>{clientName}</p>}
+            {actualLeadName && <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0' }}>{actualLeadName}</p>}
           </div>
           <button
             onClick={onClose}
@@ -102,7 +104,7 @@ const RemarkHistory = ({ clientId, clientName, isOpen, onClose, onRemarkAdded })
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
           {showAddForm ? (
             <AddRemark
-              clientId={clientId}
+              LeadId={actualLeadId}
               onAdded={handleAdded}
               onCancel={() => setShowAddForm(false)}
             />
@@ -125,7 +127,7 @@ const RemarkHistory = ({ clientId, clientName, isOpen, onClose, onRemarkAdded })
           ) : remarks.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px 0' }}>
               <FaCommentDots size={28} style={{ marginBottom: '8px' }} />
-              <p>No remarks yet for this client.</p>
+              <p>No remarks yet for this Lead.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

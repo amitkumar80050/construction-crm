@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import clientService from '../../services/clientService';
-import ClientCard from './ClientCard';
+import Leadservice from '../../services/leadService';
+import LeadCard from './LeadCard';
 
-const ClientList = ({ searchTerm = '', filterStatus = 'all', limit }) => {
-  const [clients, setClients] = useState([]);
+const LeadList = ({ searchTerm = '', filterStatus = 'all', limit }) => {
+  const [Leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchClients = useCallback(async () => {
+  const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
@@ -15,10 +15,10 @@ const ClientList = ({ searchTerm = '', filterStatus = 'all', limit }) => {
       if (filterStatus !== 'all') params.status = filterStatus;
       if (limit) params.limit = limit;
 
-      const response = await clientService.getClients(params);
-      setClients(response.data?.data || []);
+      const response = await Leadservice.getLeads(params);
+      setLeads(response.data?.data || []);
     } catch (error) {
-      const message = error?.response?.data?.message || 'Unable to load clients';
+      const message = error?.response?.data?.message || 'Unable to load Leads';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -26,29 +26,29 @@ const ClientList = ({ searchTerm = '', filterStatus = 'all', limit }) => {
   }, [searchTerm, filterStatus, limit]);
 
   useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+    fetchLeads();
+  }, [fetchLeads]);
 
-  const handleDeleted = async (clientId) => {
-    if (!window.confirm('Are you sure you want to delete this client?')) return;
+  const handleDeleted = async (LeadId) => {
+    if (!window.confirm('Are you sure you want to delete this Lead?')) return;
     try {
-      await clientService.deleteClient(clientId);
-      setClients((prev) => prev.filter((c) => c._id !== clientId));
-      toast.success('Client deleted successfully!');
+      await Leadservice.deleteLead(LeadId);
+      setLeads((prev) => prev.filter((c) => c._id !== LeadId));
+      toast.success('leaddeleted successfully!');
     } catch (error) {
-      const message = error?.response?.data?.message || 'Unable to delete client';
+      const message = error?.response?.data?.message || 'Unable to delete Lead';
       toast.error(message);
     }
   };
 
   if (loading) {
-    return <p style={{ textAlign: 'center', color: '#64748b', padding: '30px' }}>Loading clients...</p>;
+    return <p style={{ textAlign: 'center', color: '#64748b', padding: '30px' }}>Loading Leads...</p>;
   }
 
-  if (clients.length === 0) {
+  if (Leads.length === 0) {
     return (
       <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0' }}>
-        No clients found.
+        No Leads found.
       </div>
     );
   }
@@ -61,16 +61,16 @@ const ClientList = ({ searchTerm = '', filterStatus = 'all', limit }) => {
         gap: '18px'
       }}
     >
-      {clients.map((client) => (
-        <ClientCard
-          key={client._id}
-          client={client}
+      {Leads.map((Lead) => (
+        <LeadCard
+          key={Lead._id}
+          Lead={Lead}
           onDeleted={handleDeleted}
-          onStageMoved={fetchClients}
+          onStageMoved={fetchLeads}
         />
       ))}
     </div>
   );
 };
 
-export default ClientList;
+export default LeadList;

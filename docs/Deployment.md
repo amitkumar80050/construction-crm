@@ -49,6 +49,6 @@ The second command reloads Nginx so it reads a renewed certificate. Back up the 
 
 - The API container uses Chromium at `/usr/bin/chromium` for the existing WhatsApp Web integration. Its authenticated browser profile persists in `whatsapp_auth`.
 - Site-visit and import uploads persist in `api_uploads`.
-- `CLIENT_URL` restricts API CORS to the deployed origin. Socket.IO uses the same setting.
+- `Lead_URL` restricts API CORS to the deployed origin. Socket.IO uses the same setting.
 - Optional Google OAuth and SMTP settings can be added to `.env` when configured. OAuth provider callback URLs must use `https://crm.techbuzzsolution.com/api/auth/google/callback`.
-- To deploy under another hostname, update `DOMAIN`, `CLIENT_URL`, both Nginx `server_name` values, and the certificate paths in `production.conf`.
+- To deploy under another hostname, update `DOMAIN`, `Lead_URL`, both Nginx `server_name` values, and the certificate paths in `production.conf`.
